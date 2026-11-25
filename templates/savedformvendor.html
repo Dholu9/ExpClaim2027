@@ -1,0 +1,694 @@
+{% extends 'base2.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .form-label{
+    font-weight: bolder;
+  }
+</style>
+<br></br>
+<div class="col-md-6 offset-md-3">
+  <div class="parent-form-box">
+    <!-- Parent Model Form -->
+    <form method="post" action="{% url 'updaterecordvendor' parentclaimdata.VendorClaimNumber %}" class="row g-3" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Display comments if they exist -->
+      {% if comments %}
+      <div class="col-12">
+        <label for="Comments" class="form-label"> Manager Comments</label>
+        <textarea class="form-control" id="Comments" name="Comments" rows="1" readonly>{{ comments }}</textarea>
+      </div>
+      {% endif %}
+
+      <div class="col-md-6">
+        <label for="VendorClaimNumber" class="form-label">Claim Number</label>
+        <input type="text" class="form-control" id="VendorClaimNumber" name="VendorClaimNumber" value="{{parentclaimdata.VendorClaimNumber}}" readonly>
+      </div>
+      <div class="col-md-6">
+        <label for="DateofCreation" class="form-label">Date of Creation</label>
+        <input type="date" class="form-control" id="DateofCreation" name="DateofCreation" 
+          value="{{ parentclaimdata.DateofCreation|date:'Y-m-d' }}"
+        readonly>
+    </div>
+
+      <div class="col-md-6">
+        <label for="RaisedBy" class="form-label">Raised By</label>
+        <input type="text" class="form-control" id="RaisedBy" name="RaisedBy" value="{{parentclaimdata.RaisedBy}}" readonly>
+      </div>
+
+      <div class="col-md-6">
+        <label for="DTNumber" class="form-label">DT Number</label>
+        <input type="text" class="form-control" id="DTNumber" name="DTNumber" value="{{parentclaimdata.DTNumber}}" readonly>
+      </div>
+      <br></br>   
+      <div class="col-12">
+        <label for="InvoiceNumber" class="form-label">Invoice Number</label>
+        <input type="text" class="form-control" id="InvoiceNumber" name="InvoiceNumber" value="{{parentclaimdata.InvoiceNumber}}" readonly>
+      </div>
+      <div class="col-12">
+        <label for="InvoiceDate" class="form-label">Invoice Date</label>
+        <input type="date" class="form-control" id="InvoiceDate" name="InvoiceDate" value="{{ parentclaimdata.InvoiceDate|date:'Y-m-d' }}" readonly>
+      </div>
+     
+      <br></br>
+      <br></br>
+      <div class="col-md-6">
+        <label for="ProjectSelection" style="font-weight: bolder;">Select a Project:</label>
+        <select id="ProjectSelection" name="ProjectSelection" class="form-select"  readonly disabled>
+          <option value="" disabled>Select a Project</option>
+          {% for project in projects %}
+            <option value="{{ project.project_title }}" {% if project.project_title == selected_project %}selected{% endif %}>{{ project.project_title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="VendorSelection" style="font-weight: bolder;">Select a Vendor:</label>
+        <select id="VendorSelection" name="VendorSelection" class="form-select" onchange="filterClaims()" readonly disabled>
+          <option value="" disabled>Select a Vendor</option>
+          {% for vendor in vendors %}
+            <option value="{{ vendor.VendorName }}" {% if vendor.VendorName == selected_vendor %}selected{% endif %}>{{ vendor.VendorName }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <br></br>
+      <div class="col-12">
+        <label for="VendorExpenseDetail" class="form-label">Vendor Expense Details</label>      
+        <input type="text" class="form-control" id="VendorExpenseDetail" name="VendorExpenseDetail" value="{{ parentclaimdata.VendorExpenseDetail }}" readonly>
+      </div>
+
+      <div class="col-md-6">
+        <label for="FromDate" class="form-label">Start Date</label>
+        <input type="date" class="form-control" id="FromDate" name="FromDate" 
+               value="{{ parentclaimdata.FromDate|date:'Y-m-d' }}" 
+               min="{{ minDate }}" 
+               max="{{ maxDate }}" 
+               onchange="updateMaxEndDate()" 
+               readonly>
+    </div>    
+
+      <div class="col-md-6">
+        <label for="ToDate" class="form-label">End Date</label>
+        <input type="date" class="form-control" id="ToDate" name="ToDate" value="{{ parentclaimdata.ToDate|date:'Y-m-d' }}" min="{{ minDate }}" max="{{ maxDate }}" readonly>
+      </div>
+      <div class="col-md-6">
+        <label for="Approval" class="form-label">Approval</label>
+        <select id="Approval" name="Approval" class="form-control" readonly disabled>
+          <option value="" disabled>Select an option</option>    
+          <option value="{{ parentclaimdata.Approval }}" {% if parentclaimdata.Approval == "WorkOrder" %}selected{% endif %}>{{ parentclaimdata.Approval }}</option>
+          <option value="{{ parentclaimdata.Approval }}" {% if parentclaimdata.Approval == "PurchaseOrder" %}selected{% endif %}>{{ parentclaimdata.Approval }}</option>
+          <option value="{{ parentclaimdata.Approval }}" {% if parentclaimdata.Approval == "EmailAttachment" %}selected{% endif %}>{{ parentclaimdata.Approval }}</option>         
+        </select>
+      </div>  
+ 
+        {% if parentclaimdata.WorkOrder %}
+            <div class="col-md-6">
+                <label for="WorkOrder" class="form-label">Work Order</label>
+                <input type="text" class="form-control" id="WorkOrder" name="WorkOrder" value="{{ parentclaimdata.WorkOrder }}" readonly>
+            </div>
+        {% elif parentclaimdata.PurchaseOrder %}
+            <div class="col-md-6">
+                <label for="PurchaseOrder" class="form-label">Purchase Order</label>
+                <input type="text" class="form-control" id="PurchaseOrder" name="PurchaseOrder" value="{{ parentclaimdata.PurchaseOrder }}" readonly>
+            </div>
+        {% elif parentclaimdata.EmailAttachment.name %}
+        <div class="col-md-6">
+          <label for="EmailAttachment" class="form-label">Email Attachment</label>
+          <div class="d-flex align-items-center">
+              <div>
+                  {% if parentclaimdata.EmailAttachment.name %}
+                  <a href="{{ parentclaimdata.EmailAttachment.url }}" target="_blank" id='faal' class="small-font" style="font-weight: bolder;">
+                      {{ parentclaimdata.EmailAttachment.name|slice:"-10:" }}
+                  </a>
+                  {% endif %}
+              </div>
+              
+              <input type="file" id="EmailAttachment" name="EmailAttachmentNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'main')" style="display: none;">
+              <label for="EmailAttachment" class="btn btn-primary" id="fileLabel" style="display: none;">Replace file</label>
+              <span id="fileName" class="ml-2"></span>
+          </div>
+      </div>            
+        
+        {% endif %}    
+    
+      <br></br>
+      <br></br>
+      <div class="col-md-6">
+        <label for="Quantity" class="form-label">Quantity</label>
+        <input type="text" class="form-control" id="Quantity" name="Quantity" value="{{parentclaimdata.Quantity}}" readonly>
+      </div>
+      <div class="col-md-6">
+        <label for="Unit" class="form-label">Unit</label>
+        <input type="text" class="form-control" id="Unit" name="Unit" value="{{parentclaimdata.Unit}}" readonly>
+      </div>
+
+      <div class="col-md-6">
+        <label for="Rate" class="form-label">Rate</label>
+        <input type="text" class="form-control" id="Rate" name="Rate" value="{{parentclaimdata.Rate}}" readonly>
+      </div>
+
+      <div class="col-md-6">
+        <label for="Currency" class="form-label">Currency</label>
+        <input type="text" class="form-control" id="Currency" name="Currency" value="{{parentclaimdata.Currency}}" readonly>
+      </div>
+ 
+
+      <div class="col-12" id="GSTContainer">
+        <label for="GSTPercentage" class="form-label">GST Percentage</label>
+        <input type="number" class="form-control" id="GSTPercentage" name="GSTPercentage" placeholder="Enter GST percentage" min="0" step="0.01" value="{{parentclaimdata.GST}}" readonly>
+      </div>
+      {% if parentclaimdata.AdditionalAmount %} 
+      <div class="col-md-6" id="AdditionalAmountContainer">  
+          <label for="Amount" class="form-label">Additional Amount</label> 
+          <input type="number" class="form-control" id="Amount" name="Amount" value="{{parentclaimdata.AdditionalAmount}}" readonly>
+      </div>
+      <div class="col-md-6" id="AdditionalFieldContainer">
+          <label for="Field" class="form-label">Remarks</label>   
+          <input type="text" class="form-control" id="Field" name="Field" value="{{parentclaimdata.AdditionalField}}" readonly>
+      </div>
+      {% endif %}
+      
+      {% if parentclaimdata.AddApprovedBy %}
+      <div class="col-md-4" id="AddApprovedBy">
+        <label for="AddApprovedBy" class="form-label">Additional Charges Approval By</label>
+        <select name="AddApprovedBy" class="form-control" readonly disabled required>          
+          <option value="" disabled>Select an option</option>    
+          <option value="Mahima Shrivastava" {% if parentclaimdata.AddApprovedBy == "Mahima Shrivastava" %}selected{% endif %}>{{ parentclaimdata.AddApprovedBy }}</option>
+          <option value="Sudha G Rao" {% if parentclaimdata.AddApprovedBy == "Sudha G Rao" %}selected{% endif %}>{{ parentclaimdata.AddApprovedBy }}</option>
+          <option value="Brajesh Shrivastava" {% if parentclaimdata.AddApprovedBy == "Brajesh Shrivastava" %}selected{% endif %}>{{ parentclaimdata.AddApprovedBy }}</option>  
+          <option value="Prabhakara Reddy G V" {% if parentclaimdata.AddApprovedBy == "Prabhakara Reddy G V" %}selected{% endif %}>{{ parentclaimdata.AddApprovedBy }}</option>    
+          <option value="Sanjay MS" {% if parentclaimdata.AddApprovedBy == "Sanjay MS" %}selected{% endif %}>{{ parentclaimdata.AddApprovedBy }}</option>      
+        </select>
+      </div>
+      {% endif %} 
+      {% if parentclaimdata.AddAttachment.name %}  
+    
+      <div class="col-md-6">
+        <label for="AddAttachment" class="form-label">Additional Charges Approval Attachment</label>
+        <div class="d-flex align-items-center">
+            <div>
+                {% if parentclaimdata.AddAttachment.name %}
+                <a href="{{ parentclaimdata.AddAttachment.url }}" target="_blank" id='faaladd' class="small-font" style="font-weight: bolder;">
+                    {{ parentclaimdata.AddAttachment.name|slice:"-10:" }}
+                </a>
+                {% endif %}
+            </div>
+            
+            <input type="file" id="AddAttachment" name="AddAttachmentNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'add')" style="display: none;">
+            <label for="AddAttachment" class="btn btn-primary" id="fileLabeladd" style="display: none;">Replace file</label>
+            <span id="fileName" class="ml-2"></span>
+        </div>
+    </div>            
+      
+      {% endif %}  
+
+      {% if parentclaimdata.AddField %} 
+      <div class="col-md-3" id="AddFieldContainer">  
+        <label for="AddField" class="form-label">Comments</label>
+        <input type="text" class="form-control" id="AddField" name="AddField" value="{{parentclaimdata.AddField}}" readonly placeholder="Comments">
+      </div>
+      {% endif %} 
+     
+
+     {% if parentclaimdata.AdvanceApprovedBy %} 
+      <div class="col-md-4" id="AdvanceApprovedBy">
+        <label for="AdvanceApprovedBy" class="form-label">Advance Approved By</label>
+        <select name="AdvanceApprovedBy" class="form-control" readonly disabled>
+          <option value="" disabled>Select an option</option>    
+          <option value="Mahima Shrivastava" {% if parentclaimdata.AdvanceApprovedBy == "Mahima Shrivastava" %}selected{% endif %}>{{ parentclaimdata.AdvanceApprovedBy }}</option>
+          <option value="Sudha G Rao" {% if parentclaimdata.AdvanceApprovedBy == "Sudha G Rao" %}selected{% endif %}>{{ parentclaimdata.AdvanceApprovedBy }}</option>
+          <option value="Brajesh Shrivastava" {% if parentclaimdata.AdvanceApprovedBy == "Brajesh Shrivastava" %}selected{% endif %}>{{ parentclaimdata.AdvanceApprovedBy }}</option>  
+          <option value="Prabhakara Reddy G V" {% if parentclaimdata.AdvanceApprovedBy == "Prabhakara Reddy G V" %}selected{% endif %}>{{ parentclaimdata.AdvanceApprovedBy }}</option>    
+          <option value="Sanjay MS" {% if parentclaimdata.AdvanceApprovedBy == "Sanjay MS" %}selected{% endif %}>{{ parentclaimdata.AdvanceApprovedBy }}</option>      
+        </select>       
+    </div>
+    {% endif %} 
+    
+    {% if parentclaimdata.AdvanceAmount %} 
+    <div class="col-md-2" id="AdvanceAmountContainer">
+        <label for="AdvanceAmount" class="form-label">Advance Amount</label>
+        <input type="number" class="form-control" id="AdvanceAmount" name="AdvanceAmount" value="{{parentclaimdata.AdvanceAmount}}" readonly placeholder="Enter Advance Amount">
+    </div> 
+
+    <div class="col-md-2" id="ToBeDeducted">
+      <label for="tobededucted" class="form-label">To Be Deducted</label>
+      <select id="tobededucted" name="ToBeDeducted" class="form-control" readonly required>
+          <option value="" disabled>Select an option</option>
+          <option value="yes" {% if parentclaimdata.ToBeDeducted == "yes" %}selected{% endif %}>Yes</option>
+          <option value="no" {% if parentclaimdata.ToBeDeducted == "no" %}selected{% endif %}>No</option>
+      </select>
+  </div>  
+
+    <div class="col-md-6">
+      <label for="AdvanceAttachment" class="form-label">Advance Attachment</label>
+      <div class="d-flex align-items-center">
+        <div>
+          {% if parentclaimdata.AdvanceAttachment.name %}
+          <a href="{{ parentclaimdata.AdvanceAttachment.url }}" target="_blank" id='faaladv' class="small-font" style="font-weight: bolder;">
+              {{ parentclaimdata.AdvanceAttachment.name|slice:"-10:" }}
+          </a>
+          {% endif %}
+        </div>
+        
+        <input type="file" id="AdvanceAttachment" name="AdvanceAttachmentNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'adv')" style="display: none;">
+        <label for="AdvanceAttachment" class="btn btn-primary" id="fileLabeladv" style="display: none;">Replace file</label>
+        <span id="fileName" class="ml-2"></span>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-md-2" id="AdvanceAmountContainer" style="display: none;">
+      <label for="AdvanceAmount" class="form-label">Advance Amount</label>
+      <input type="number" class="form-control" id="AdvanceAmount" name="AdvanceAmount" value="{{parentclaimdata.AdvanceAmount}}" readonly placeholder="Enter Advance Amount">
+  </div> 
+
+  <div class="col-md-2" id="ToBeDeducted" style="display: none;">
+    <label for="tobededucted" class="form-label">To Be Deducted</label>
+    <select id="tobededucted" name="ToBeDeducted" class="form-control" readonly required>
+        <option value="" disabled>Select an option</option>
+        <option value="yes" {% if parentclaimdata.ToBeDeducted == "yes" %}selected{% endif %}>Yes</option>
+        <option value="no" {% if parentclaimdata.ToBeDeducted == "no" %}selected{% endif %}>No</option>
+    </select>
+</div>  
+
+  <div class="col-md-6" style="display: none;">
+    <label for="AdvanceAttachment" class="form-label">Advance Attachment</label>
+    <div class="d-flex align-items-center">
+      <div>
+        {% if parentclaimdata.AdvanceAttachment.name %}
+        <a href="{{ parentclaimdata.AdvanceAttachment.url }}" target="_blank" id='faaladv' class="small-font" style="font-weight: bolder;">
+            {{ parentclaimdata.AdvanceAttachment.name|slice:"-10:" }}
+        </a>
+        {% endif %}
+      </div>
+      
+      <input type="file" id="AdvanceAttachment" name="AdvanceAttachmentNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'adv')" style="display: none;">
+      <label for="AdvanceAttachment" class="btn btn-primary" id="fileLabeladv" style="display: none;">Replace file</label>
+      <span id="fileName" class="ml-2"></span>
+    </div>
+  </div>
+    {% endif %} 
+    
+      <div class="col-12">
+        <label for="TotalClaimAmount" class="form-label">TotalClaimAmount</label>
+        <div class="input-group mb-3">
+          <span class="input-group-text">Rs</span>
+          <input type="number" class="form-control" aria-label="Rupees amount (with dot and two decimal places)" id="TotalClaimAmount" name="TotalClaimAmount" value="{{parentclaimdata.TotalClaimAmount}}" readonly>
+        </div>
+      </div>   
+
+      <div class="row mb-3">       
+        <div class="col-md-6">   
+          {% if parentclaimdata.InvoiceAttachment.name %}
+            <!-- Container for the invoice attachment details -->
+            <div class="d-flex align-items-center">
+              <!-- Receipt Name Link -->
+              <div class="offset-2" >
+                <label for="InvoiceAttachment" class="form-label">Invoice</label>
+                <a href="{{ parentclaimdata.InvoiceAttachment.url }}" target="_blank" class="small-font" id="faaldelete"  style="font-weight: bolder;">
+                  {{ parentclaimdata.InvoiceAttachment.name|slice:"-10:" }}
+                </a>
+              </div>  
+            
+            
+              <!-- Delete Button -->
+              <input type="file" id="delete" name="delete" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'delete')" style="display: none;">
+              <label for="delete" class="btn btn-primary" id="fileLabeldelete" style="display: none;">Replace file</label>
+              <span id="fileName" class="ml-2"></span>
+            </div>
+
+          {% else %}
+            No existing bill attachment
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12">
+        <label for="Description" class="form-label">Description</label>  
+        <input type="text" class="form-control" id="Description" name="Description" value="{{ parentclaimdata.Description }}" readonly>
+      </div>  
+      
+      <div class="col-12">
+        <label for="Remarks" class="form-label">Remarks</label>
+        <input type="text" class="form-control" id="Remarks" name="Remarks" value="{{parentclaimdata.Remarks}}" readonly>
+      </div>
+
+      <br></br>
+      <br></br>
+
+      {% if is_rejected %}
+      <div class="offset-md-10">
+        <button type="button" id="edit-button" class="btn btn-primary">Edit</button>
+        <button type="submit" name="action" value="submit" class="btn btn-primary">Submit</button>
+      </div>
+      {% endif %}
+    </form>
+
+    <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+    <style>
+      #go-back-button {
+        position: fixed;
+        bottom: 20px; /* Adjust as needed */
+        right: 50px; /* Adjust as needed */
+        z-index: 1000; /* Ensure it’s above other content */
+        width: 140px; /* Increase button width (length) */
+        height: 40px; /* Decrease button height */
+        font-size: 16px; /* Optional: adjust text size */
+        padding: 0; /* Remove default padding */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() { 
+    document.getElementById('Quantity').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('Rate').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('AdvanceAmount').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('GSTPercentage').addEventListener('input', calculateTotalClaimAmount);
+
+    // Check if Additional Amount input exists before adding event listener
+    var additionalAmountField = document.getElementById('Amount');
+    if (additionalAmountField) {
+        additionalAmountField.addEventListener('input', calculateTotalClaimAmount);
+    }
+
+    // Add event listener for the edit button
+    document.getElementById("edit-button").addEventListener("click", function() {
+        enableFormFields();
+    });
+
+    // Add event listener for the To Be Deducted dropdown
+    var tobededucted = document.getElementById('tobededucted');
+    tobededucted.addEventListener('change', function() {
+        console.log("Updated To Be Deducted value:", tobededucted.value);
+        calculateTotalClaimAmount(); // Trigger calculation on change
+    });
+});
+
+function enableFormFields() {
+    var editableFields = document.querySelectorAll("#Quantity, #Rate, #Amount, #GSTPercentage");
+    editableFields.forEach(function(field) {
+        field.removeAttribute("readonly"); // Make the fields editable
+    });  
+
+  }
+
+function calculateTotalClaimAmount() {
+    // Get the values from the input fields
+    var quantity = parseFloat(document.getElementById('Quantity').value) || 0;
+    var rate = parseFloat(document.getElementById('Rate').value) || 0;
+    var gstPercentage = parseFloat(document.getElementById('GSTPercentage').value) || 0;
+    var advamount = parseFloat(document.getElementById('AdvanceAmount').value) || 0;
+
+    // Initialize additionalCharges variable
+    var additionalCharges = 0;
+
+    // Check if the Additional Amount container is present
+    var additionalAmountField = document.getElementById('Amount');
+    if (additionalAmountField) {
+        additionalCharges = parseFloat(additionalAmountField.value) || 0;
+    }
+
+    console.log(`Quantity: ${quantity}, Rate: ${rate}, GST: ${gstPercentage}, Additional Charges: ${additionalCharges}, Advance: ${advamount}`);
+
+    // Calculate the total claim amount based on quantity and rate
+    var totalClaimAmount = (quantity * rate) + additionalCharges;
+
+    // If GST percentage is greater than 0, add the GST to the total
+    if (gstPercentage > 0) {
+        totalClaimAmount += (gstPercentage / 100) * totalClaimAmount;
+    }
+
+    // Deduct the advance amount
+    totalClaimAmount = deductAdvanceAmount(totalClaimAmount, advamount);
+
+    // Update the Total Claim Amount input field
+    document.getElementById('TotalClaimAmount').value = totalClaimAmount.toFixed(2);
+}
+
+function deductAdvanceAmount(totalClaimAmount, advamount) {
+    return totalClaimAmount - advamount;
+}
+
+document.getElementById('tobededucted').addEventListener('change', function() {
+    // Assume totalClaimAmount is defined elsewhere
+    let totalClaimAmount = parseFloat(document.getElementById('TotalClaimAmount').value) || 0;
+    deductAdvanceAmount(totalClaimAmount);
+});
+
+function deductAdvanceAmount(totalClaimAmount) {
+    var advamount = parseFloat(document.getElementById('AdvanceAmount').value) || 0;
+    var tobededucted = document.getElementById('tobededucted'); 
+
+    // Deduct the advance amount if 'To Be Deducted' is set to 'yes'
+    if (tobededucted.value === 'yes') {
+        totalClaimAmount -= advamount; // Deduct the advance amount
+        console.log("Deducting amount, new Total Claim Amount:", totalClaimAmount);
+    } else {
+        console.log("No deduction applied.");
+    }
+
+    console.log("Total Claim Amount after deduction:", totalClaimAmount);
+    return totalClaimAmount; // Return the updated total
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    var tobededucted = document.getElementById('ToBeDeducted');
+
+    
+
+    tobededucted.addEventListener('change', function() {
+   
+        calculateTotalClaimAmount(); // Trigger calculation on change
+    });
+});
+
+
+// Function to enable form fields
+function enableFormFields() {
+    var formControlFields = document.querySelectorAll(".form-control:not(#VendorClaimNumber):not(#DateofCreation):not(#Comments):not(#TotalClaimAmount):not(#RaisedBy):not(#DTNumber)");
+    var formSelectFields = document.querySelectorAll(".form-select");
+
+    // Enable all form control fields
+    formControlFields.forEach(function(field) {
+        field.readOnly = false;
+        field.removeAttribute("readonly");
+    });
+
+    // Enable all select fields
+    formSelectFields.forEach(function(select) {
+        select.disabled = false;
+        select.removeAttribute("disabled");
+    });
+}
+
+// Function to handle file input and label based on email attachment
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('Quantity').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('Rate').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('AdvanceAmount').addEventListener('input', calculateTotalClaimAmount);
+    document.getElementById('GSTPercentage').addEventListener('input', calculateTotalClaimAmount);
+
+    const additionalAmountField = document.getElementById('Amount');
+    if (additionalAmountField) {
+        additionalAmountField.addEventListener('input', calculateTotalClaimAmount);
+    }
+
+    document.getElementById("edit-button").addEventListener("click", function() {
+        enableFormFields();
+        showFileLabels();
+        handleFileInput();
+    });
+
+    const tobededucted = document.getElementById('tobededucted');
+    tobededucted.addEventListener('change', function() {
+        console.log("Updated To Be Deducted value:", tobededucted.value);
+        calculateTotalClaimAmount();
+    });
+});
+
+function enableFormFields() {
+    const formControlFields = document.querySelectorAll(".form-control:not(#VendorClaimNumber):not(#DateofCreation):not(#Comments):not(#TotalClaimAmount):not(#RaisedBy):not(#DTNumber)");
+    const formSelectFields = document.querySelectorAll(".form-select");
+
+    formControlFields.forEach(field => {
+        field.readOnly = false;
+        field.removeAttribute("readonly");
+    });
+
+    formSelectFields.forEach(select => {
+        select.disabled = false;
+        select.removeAttribute("disabled");
+    });
+}
+
+function showFileLabels() {
+    const invoiceAttachmentExists = document.getElementById('faaldelete').textContent !== "";
+    const fileLabelDelete = document.getElementById("fileLabeldelete");
+
+    // Show the delete label only if the invoice attachment exists
+    if (invoiceAttachmentExists) {
+        fileLabelDelete.style.display = "inline-block";
+        fileLabelDelete.textContent = 'Replace file';
+    } else {
+        fileLabelDelete.style.display = 'none'; // Hide if no attachment exists
+    }
+
+    // Other file labels can be handled similarly
+    displayFileLabel('fileLabel');
+    displayFileLabel('fileLabeladd');
+    displayFileLabel('fileLabeladv');
+}
+
+function displayFileLabel(labelId) {
+    const label = document.getElementById(labelId);
+    if (label) {
+        label.style.display = "inline-block";
+        label.textContent = 'Replace file';
+    }
+}
+
+function handleFileInput() {
+    const approval = document.getElementById('Approval');
+    const emailAttachmentName = document.getElementById('faal').textContent;
+
+    const fileInputs = [
+        { inputId: 'EmailAttachment', labelId: 'fileLabel' },
+        { inputId: 'AddAttachment', labelId: 'fileLabeladd' },
+        { inputId: 'AdvanceAttachment', labelId: 'fileLabeladv' }
+    ];
+
+    fileInputs.forEach(({ inputId, labelId }) => {
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+
+        label.textContent = 'Choose file';
+        label.style.display = 'none';
+        input.setAttribute("disabled", true);
+
+        if (approval.value === 'EmailAttachment' && emailAttachmentName) {
+            input.removeAttribute("disabled");
+            label.style.display = "inline-block";
+            label.textContent = 'Replace file';
+        }
+    });
+}
+
+function updateFileLabel(input, type) {
+    let fileLabel, fileNameDisplay;
+
+    if (type === 'main') {
+        fileLabel = document.getElementById('fileLabel');
+        fileNameDisplay = document.getElementById('faal');
+    } else if (type === 'add') {
+        fileLabel = document.getElementById('fileLabeladd');
+        fileNameDisplay = document.getElementById('faaladd');
+    } else if (type === 'adv') {
+        fileLabel = document.getElementById('fileLabeladv');
+        fileNameDisplay = document.getElementById('faaladv');
+    } else if (type === 'delete') {
+        fileLabel = document.getElementById('fileLabeldelete');
+        fileNameDisplay = document.getElementById('faaldelete');
+    }
+
+    fileNameDisplay.textContent = '';
+
+    if (input.files.length > 0) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const allowedFormats = ['pdf', 'jpeg', 'jpg', 'png'];
+        const fileExtension = fileName.split('.').pop().toLowerCase();
+
+        if (allowedFormats.includes(fileExtension)) {
+            fileLabel.textContent = 'Replace file';
+            fileNameDisplay.textContent = fileName;
+            fileLabel.style.display = 'inline-block';
+        } else {
+            alert("Please upload a file in one of the following formats: PDF, JPEG, JPG, PNG");
+            input.value = '';
+            fileLabel.textContent = 'Choose file';
+            fileLabel.style.display = 'none';
+        }
+    } else {
+        fileLabel.textContent = 'Choose file';
+        fileLabel.style.display = 'none';
+    }
+}
+
+function goBack() {
+    window.history.back();
+}
+
+
+const claims = ({{ claims_data|safe }});
+
+function filterClaims() {
+    const vendorSelection = document.getElementById('VendorSelection').value;
+
+    // Reset the blocked dates
+    const blockedDates = [];
+
+    // Filter claims based on selected vendor
+    claims.forEach(claim => {
+        if (claim.vendorName === vendorSelection) {
+            blockedDates.push({
+                start: new Date(claim.fromDate),
+                end: new Date(claim.toDate)
+            });
+        }
+    });
+
+    updateDateInputs(blockedDates);
+}
+
+function updateDateInputs(blocked) {
+    const disabledDates = [];
+
+    // Create an array of disabled dates
+    blocked.forEach(block => {
+        let currentDate = new Date(block.start);
+        while (currentDate <= block.end) {
+            disabledDates.push(currentDate.toISOString().split('T')[0]); // Format to YYYY-MM-DD
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+    });
+
+    // Initialize Flatpickr for From Date
+    flatpickr("#FromDate", {
+        disable: disabledDates,
+        onChange: validateToDate // Add validation function
+    });
+
+    // Initialize Flatpickr for To Date
+    flatpickr("#ToDate", {
+        disable: disabledDates,
+        onChange: validateToDate // Add validation function
+    });
+}
+
+function validateToDate() {
+    const fromDateInput = document.getElementById('FromDate')._flatpickr; // Access the Flatpickr instance
+    const toDateInput = document.getElementById('ToDate')._flatpickr;
+
+    if (fromDateInput.selectedDates.length > 0 && toDateInput.selectedDates.length > 0) {
+        const fromDate = fromDateInput.selectedDates[0];
+        const toDate = toDateInput.selectedDates[0];
+
+        if (toDate < fromDate) {
+            alert("End Date cannot be earlier than Start Date.");
+            toDateInput.clear(); // Clear the invalid selection
+        }
+    }
+}
+
+</script>
+
+
+  </div>
+</div>
+
+{% endblock %}

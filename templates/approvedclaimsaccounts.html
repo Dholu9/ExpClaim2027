@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .table-container {
+    width: 100%;
+    max-width: 100%;
+    /* Fit the screen height so the horizontal scrollbar at the bottom of the box is always visible */
+    max-height: calc(100vh - 260px);
+    min-height: 300px;
+    overflow-y: auto;            /* vertical scroll inside the box */
+    overflow-x: scroll;          /* horizontal scrollbar always shown, nothing gets cut */
+    margin: 0;
+    box-sizing: border-box;
+    border: 1px solid #cfd8e3;
+  }
+
+  /* Table grows to fit its columns instead of squeezing them */
+  .claims-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  .claims-table td {
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: rgb(74, 75, 71);
+    white-space: nowrap;
+    border-right: 2px solid #380a0a;
+    vertical-align: middle;
+  }
+
+  .claims-table th {
+    position: sticky;
+    top: 0;
+    background-color: rgb(207, 219, 224);
+    text-align: center;
+    font-size: 14px;
+    color: rgb(43, 26, 53);
+    white-space: nowrap;
+    padding: 12px;
+    z-index: 10;
+  }
+
+  /* Give the main columns room */
+  .claims-table th, .claims-table td { min-width: 110px; }
+  .claims-table th:nth-child(1), .claims-table td:nth-child(1) { min-width: 130px; }  /* ClaimNo */
+  .claims-table th:nth-child(4), .claims-table td:nth-child(4) { min-width: 150px; }  /* Associate Name */
+  .claims-table th:nth-child(10), .claims-table td:nth-child(10) { min-width: 460px; } /* ExpDetails */
+
+  /* ===== Editable ExpDetails ===== */
+  .expdetails-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+  }
+  .expdetails-input {
+    flex: 1 1 auto;
+    min-width: 320px;
+    width: 100%;
+    min-height: 54px;
+    padding: 6px 8px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #2c3e50;
+    border: 1px solid #a5c9ea;
+    border-radius: 6px;
+    background: #eaf6ff;
+    resize: vertical;
+    white-space: pre-wrap;
+  }
+  .expdetails-input:focus {
+    outline: none;
+    border-color: #6699cc;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(102, 153, 204, 0.25);
+  }
+  .expdetails-save {
+    flex: 0 0 auto;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #6bbf7a, #3a8f4c);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .expdetails-save:hover:not(:disabled) {
+    background: linear-gradient(135deg, #3a8f4c, #256532);
+  }
+  .expdetails-save:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+  }
+  .expdetails-msg {
+    display: block;
+    min-height: 16px;
+    margin-top: 2px;
+    font-size: 11px;
+    text-align: left;
+  }
+
+  @media (max-width: 1440px) {
+    .claims-table td, .claims-table th { font-size: 11px; padding: 10px; }
+  }
+  @media (max-width: 768px) {
+    .claims-table td, .claims-table th { font-size: 10px; padding: 8px; }
+    .claims-table th:nth-child(10), .claims-table td:nth-child(10) { min-width: 380px; }
+  }
+</style>
+
+ <br><br>
+ <div class="col-12 col-md-10 offset-md-2" style="min-width:0;">
+  <h6 style="color: rgb(87, 113, 185);">Search by Username</h6>
+  <!-- Add a form to input the username -->
+  <form id="search-form">
+    {% csrf_token %}
+    <div id="live-region" class="visually-hidden visually-hidden-fallback" role="status" aria-live="polite" aria-atomic="true"></div>
+      <input type="text" id="username-input" placeholder="Enter username">
+
+      <label for="claim-input" class="visually-hidden visually-hidden-fallback">Claim number</label>
+      <input type="text" id="claim-input" placeholder="Search claim number" autocomplete="off">
+      <button type="button" id="search-button">Search</button>
+  </form>
+  <br>
+
+  <div class="table-container">
+  <table class="table table-striped claims-table">
+      <thead style="background-color: rgb(207, 219, 224);">
+          <tr>
+              <th scope="col">ClaimNo</th>
+              <th scope="col">ApprDt.</th>
+              <th scope="col">ApprBy</th>
+              <th scope="col">Associate Name</th>
+              <th scope="col">DT Number</th>
+              <th scope="col">Dept</th>
+              <th scope="col">Manager</th>
+              <th scope="col">Project</th>
+              <th scope="col">Sub-Project</th>
+              <th scope="col">ExpDetails</th>
+              <th scope="col">Amount</th>
+              <th scope="col">ApprAmt</th>
+              <th scope="col">AccSt.</th>
+              <th scope="col">MgmtSt.</th>
+              <th scope="col">PmtSt.</th>
+          </tr>
+      </thead>
+      <tbody>
+          {% for n in parentclaimdata %}
+              <tr style="background-color: rgb(239, 244, 247);">
+                  <td style="text-align: center;">
+                      <a href="{% url 'entereddata3' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+                  </td>
+                  <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+                  <td>{{ n.approvedby }}</td>
+                  <td>{{ n.user.first_name }}</td>
+                  <td>{{ n.user.last_name }}</td>
+                  <td>{{ n.Department }}</td>
+                  <td>{{ n.Manager }}</td>
+                  <td>{{ n.Project }}</td>
+                  <td>{{ n.Subproject }}</td>
+
+                  <!-- EDITABLE EXPENSE DETAILS -->
+                  <td>
+                    <div class="expdetails-cell">
+                      <textarea class="expdetails-input"
+                                data-claim="{{ n.ClaimNumber }}"
+                                rows="2"
+                                placeholder="Expense details">{{ n.ExpenseDetails|default_if_none:"" }}</textarea>
+                      <button type="button" class="expdetails-save"
+                              data-claim="{{ n.ClaimNumber }}" disabled>Save</button>
+                    </div>
+                    <span class="expdetails-msg" data-claim-msg="{{ n.ClaimNumber }}"></span>
+                  </td>
+
+                  <td>
+                    {% for claim_number, claim_total in total_claim_amounts %}
+                        {% if claim_number == n.ClaimNumber %}
+                            {{ claim_total|default:0 }}
+                        {% endif %}
+                    {% endfor %}
+                </td>
+
+                  <td>
+                    {% with status=n.current_status %}
+                    {{ status.approvedamount }}
+                {% endwith %}
+                  </td>
+                  <td>
+                    {% if n.current_status.accountstatus == 'Approved' %}
+                        <span class="text-success">Approved</span>
+                    {% elif n.current_status.accountstatus == 'Rejected' %}
+                        <span class="text-danger">Rejected</span>
+                    {% else %}
+                        <span class="text-warning">Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if n.current_status.managementstatus == 'Approved' %}
+                        <span style="color:green;">Approved</span>
+                    {% elif n.current_status.managementstatus == 'Rejected' %}
+                        <span style="color:red;">Rejected</span>
+                    {% else %}
+                        <span>Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if n.current_status.paymentstatus == 'PaymentDone' %}
+                        <span style="color:green;">PaymentDone</span>
+                    {% else %}
+                        <span>Pending</span>
+                    {% endif %}
+                </td>
+              </tr>
+          {% empty %}
+              <tr>
+                  <td colspan="15" style="text-align: center;">No approved claims found.</td>
+              </tr>
+          {% endfor %}
+      </tbody>
+  </table>
+  </div>
+</div>
+
+<script>
+  // Function to disable button and change its text to 'Processing...'
+  function disableButton(event) {
+      var button = event.target;
+      button.disabled = true;
+      button.innerHTML = "Processing...";
+  }
+
+  // Function to toggle visibility of comments based on dropdown selection
+  function toggleComments() {
+      var statusDropdowns = document.querySelectorAll(".accountstatus-dropdown");
+      var commentsDivs = document.querySelectorAll(".accountscomments-div");
+
+      statusDropdowns.forEach(function (dropdown, index) {
+          commentsDivs[index].style.display = (dropdown.value === "Rejected") ? "block" : "none";
+      });
+  }
+
+  // Attach event listeners to all status dropdowns
+  var statusDropdowns = document.querySelectorAll(".accountstatus-dropdown");
+  statusDropdowns.forEach(function (dropdown) {
+      dropdown.addEventListener("change", toggleComments);
+  });
+
+  // Initialize visibility based on current selections
+  toggleComments();
+
+// Live filter: Associate Name (col 4) + Claim Number (col 1)
+function performSearch() {
+    var nameQuery  = document.getElementById('username-input').value.trim().toLowerCase();
+    var claimQuery = document.getElementById('claim-input').value.trim().toLowerCase();
+    var tableRows  = document.querySelectorAll('tbody tr');
+
+    tableRows.forEach(function (row) {
+        // Skip the "No approved claims found" row (it has only one cell)
+        if (row.cells.length === 1) return;
+
+        var rowName  = row.querySelector('td:nth-child(4)').textContent.trim().toLowerCase();
+        var rowClaim = row.querySelector('td:nth-child(1)').textContent.trim().toLowerCase();
+
+        // Name: under 3 letters match the start, 3+ letters match anywhere
+        var nameMatches = nameQuery === '' ||
+            rowName.startsWith(nameQuery) ||
+            (nameQuery.length >= 3 && rowName.includes(nameQuery));
+
+        // Claim number: match anywhere in the number
+        var claimMatches = claimQuery === '' || rowClaim.includes(claimQuery);
+
+        row.style.display = (nameMatches && claimMatches) ? '' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var searchButton  = document.getElementById('search-button');
+    var usernameInput = document.getElementById('username-input');
+    var claimInput    = document.getElementById('claim-input');
+
+    // Filter on every keystroke (also covers paste and clearing the box)
+    usernameInput.addEventListener('input', performSearch);
+    claimInput.addEventListener('input', performSearch);
+
+    // Enter key: just filter, don't submit the form
+    [usernameInput, claimInput].forEach(function (input) {
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                performSearch();
+            }
+        });
+    });
+
+    // Keep the button working as well (you could also remove it)
+    searchButton.addEventListener('click', performSearch);
+});
+
+/* =========================================================================
+   EDITABLE EXPENSE DETAILS (saved per claim)
+   Each textarea is wired directly to the Save button in its OWN table cell,
+   so it works even if two rows share the same claim number.
+   ========================================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+  var saveUrl = "{% url 'update_expense_details' %}";
+
+  function getCsrf() {
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  function norm(s) { return String(s == null ? '' : s).replace(/\r\n/g, '\n').trim(); }
+
+  document.querySelectorAll('.expdetails-input').forEach(function (ta) {
+    var cell = ta.closest('td');
+    var btn  = cell.querySelector('.expdetails-save');
+    var msg  = cell.querySelector('.expdetails-msg');
+    var claim = ta.getAttribute('data-claim');
+    var original = norm(ta.defaultValue);      // value as rendered by the server
+
+    function refresh() {
+      btn.disabled = (norm(ta.value) === original);
+      if (!btn.disabled) msg.textContent = '';
+    }
+
+    // Any way the text can change
+    ['input', 'keyup', 'change', 'paste', 'cut'].forEach(function (evt) {
+      ta.addEventListener(evt, function () {
+        // paste/cut fire before the value updates, so check on the next tick
+        setTimeout(refresh, 0);
+      });
+    });
+
+    function save() {
+      var value = norm(ta.value);
+      if (!value) {
+        msg.style.color = '#b00020';
+        msg.textContent = 'Expense details cannot be empty.';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.style.color = '#666';
+      msg.textContent = 'Saving…';
+
+      fetch(saveUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({ claim_number: claim, expensedetails: value })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.status === 'success') {
+          ta.value = data.expensedetails;
+          original = norm(data.expensedetails);
+          msg.style.color = '#1a7a3c';
+          msg.textContent = 'Saved.';
+          btn.disabled = true;
+          setTimeout(function () { if (msg.textContent === 'Saved.') msg.textContent = ''; }, 2500);
+        } else {
+          msg.style.color = '#b00020';
+          msg.textContent = data.message || 'Could not save.';
+          btn.disabled = false;
+        }
+      })
+      .catch(function (err) {
+        msg.style.color = '#b00020';
+        msg.textContent = 'Error: ' + err;
+        btn.disabled = false;
+      });
+    }
+
+    btn.addEventListener('click', function () { if (!btn.disabled) save(); });
+
+    // Ctrl+Enter (or Cmd+Enter) saves too
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        refresh();
+        if (!btn.disabled) save();
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

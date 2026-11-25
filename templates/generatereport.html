@@ -1,0 +1,687 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 700px; /* Adjust max-height as needed */
+    overflow-y: auto; /* Vertical scroll for overflow */
+    overflow-x: auto; /* Horizontal scroll for overflow */
+    margin: 0;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse; /* Ensure borders and spacing are collapsed */
+    table-layout: fixed; /* Ensures fixed layout */
+  }
+  
+  td {
+    padding: 12px;
+    text-align: center;
+
+    color: rgb(74, 75, 71);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    border-right: 2px solid #380a0a; /* Prevents text wrapping */
+  }
+  
+  th {
+    position: sticky; /* Makes the header sticky */
+    top: 0; /* Set the top position for sticky behavior */
+    background-color: rgb(207, 219, 224); /* Background color for visibility */
+    text-align: center;
+  
+    color: rgb(43, 26, 53);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    z-index: 10; /* Ensures it stays above other content when scrolling */
+  }  
+  @media (max-width: 1260px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn btn-danger,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+   
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+
+/* Small Laptops and Tablets (Max 1024px) */
+@media (max-width: 1024px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 6px;
+    padding: 8px;
+  }
+  .btn-secondary,
+  .btn-info,
+  .btn btn-danger,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+
+  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Larger Mobile Screens (Max 768px) */
+@media (max-width: 768px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn btn-danger,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+ 
+/* Small Mobile Screens (Max 480px) */
+@media (max-width: 480px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 6px;
+    padding: 8px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn btn-danger,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Extra Small Screens (Max 320px) */
+@media (max-width: 320px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn btn-danger,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+  </style>
+
+
+<div class="col-12 offset-md-2">
+
+
+
+  <h5>Search by Username</h5>
+
+  <!-- Add a form to input the username -->
+  <div style="display: flex; align-items: center;">
+    <form id="search-form" style="display: flex; align-items: center;" onsubmit="return false;">
+        <input type="text" id="username-input" placeholder="Enter username" style="margin-right: 10px;">
+        <button type="button" id="search-button" style="margin-right: 10px;">Search</button>
+    </form>
+    <button onclick="window.location.reload();" class="btn btn-danger" style="margin-left: 10px;">Remove Filter</button>
+</div>
+
+
+
+  
+  <br>
+
+  <form id="date-range-form" action="#"> 
+    <label for="start-date" style="font-weight: bold;">From Date:</label>
+    <input type="date" id="start-date" name="start-date">
+    <label for="end-date" style="font-weight: bold;">To Date:</label>
+    <input type="date" id="end-date" name="end-date">
+    <button type="button" id="filter-button" style="font-weight: bold;">Filter By Date</button>  
+    <input type="checkbox" id="select-all-checkbox" style="font-weight: bold;"> Select All 
+    
+  
+</form>
+ 
+<form id="project-form" action="#"> 
+  <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+    <div class="col-md-2">  
+      <select class="form-control" id="project_name" name="project_name">
+        <option value="">Select a Project</option>
+        {% for project in projects %}
+          <option value="{{ project.project_title }}">{{ project.project_title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="button" id="project-button" style="font-weight: bold;">Filter By Project</button>  
+  
+    <input type="checkbox" id="select-all-checkboxproject" style="font-weight: bold;"> Select All    
+  </div>
+
+</form>
+
+
+<form id="selected-claims-form" action="{% url 'selected_claims_view' %}" method="post" onsubmit="return validateForm()">
+    {% csrf_token %}
+
+    
+    <div class="offset-md-10">
+      <input type="hidden" name="selected-claims" id="selected-claims-input">     
+      <button onclick="generateSelectedClaimsExcel()" class="btn btn-info" style="margin-top: -280px; margin-left: -500px;">Download Excel</button>
+      <button onclick="downloadVouchers()" class="btn btn-warning" style="margin-top: -280px;">Download Vouchers</button>    
+    
+  </div>  
+  <br>
+  <table class="table table-striped">
+    <thead style="background-color:rgb(207, 219, 224);">
+    <tr>
+        <th scope="col"></th>
+        <th scope="col">ClaimNo</th>
+        <th scope="col">DateofApproval</th>
+        <th scope="col">Associate Name</th>
+        <th scope="col">DTNumber</th>   
+        <th scope="col">Department</th>
+        <th scope="col">Manager</th>
+        <th scope="col">Project</th>
+        <th scope="col">Sub-Project</th>
+        <th scope="col">ExpenseDetails</th>
+        <th scope="col">TotalClaimAmount</th>
+        <th scope="col">ApprovedAmt</th>
+        <th scope="col">AccountStatus</th>
+        <th scope="col">Payment</th>
+      </tr>
+    </thead>    
+    <tbody>
+      {% for n in parentclaimdata %}
+        <tr style="background-color:rgb(239, 244, 247);">  
+            <td>             
+                <input type="checkbox" name="selected-claims" value="{{ n.ClaimNumber }}" class="claim-checkbox">
+              </td>  
+          <td>
+            <a href="{% url 'entereddata3' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+          </td>
+          <td>{{ n.StatusDate|date:"d-m-Y" }}</td>
+          <td>{{n.user.first_name}}</td>
+          <td>{{ n.user.last_name }}</td>        
+          <td>{{ n.Department }}</td>
+          <td>{{ n.Manager }}</td>     
+        
+          <td>{{ n.Project }}</td>       
+          <td>{{ n.Subproject }}</td>
+          <td>{{ n.ExpenseDetails }}</td>
+          {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == n.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+          {% endif %}
+      {% endfor %}
+      {% for status in n.claimstatus_set.all %}       
+      <td>{{ status.approvedamount }}</td>
+{% endfor %}
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.accountstatus == 'Approved' %}
+            <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-success">{{ status.accountstatus }}</a>
+            {% elif status.accountstatus == 'Rejected' %}
+            <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-danger">{{ status.accountstatus }}</a>             
+            {% else %}
+            <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-warning">Pending</a>   
+            {% endif %}                       
+            {% endfor %}
+          </td>
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.paymentstatus == 'PaymentDone' %}
+            <span style="color: rgb(18, 185, 68);">{{ status.paymentstatus }}</span>
+            {% else %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>
+            {% endif %}                        
+            {% endfor %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="7">No approved claims found.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <!-- Add this after the </tbody> tag -->
+    <tfoot>   
+      <tr>
+          <td colspan="10" style="text-align: right; font-weight: bold;">Total:</td>
+          <td id="total-claim-amount" style="font-weight: bold;"></td>     
+          <td id="approved-amount" style="font-weight: bold;"></td>
+          <td colspan="1"></td>
+      </tr>    
+  </tfoot>
+  </table>
+</form>
+<style>
+ 
+  #go-back-button {
+    position: fixed;
+    bottom: 20px; /* Adjust the value to control the vertical position */
+    right: 20px; /* Adjust the value to control the horizontal position */
+    z-index: 1; /* Make sure it's above other content */
+  }
+</style>  
+  <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+<script>
+document.getElementById('filter-button').addEventListener('click', function(event) {
+    event.preventDefault();
+    console.log("Filter button clicked");
+
+    // Parse the selected start and end dates
+    var startDate = new Date(document.getElementById('start-date').value);
+    var endDate = new Date(document.getElementById('end-date').value);
+    
+    // Set both start and end dates to the beginning and end of the day
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    var usernameFilter = document.getElementById('username-input').value.trim().toLowerCase();
+    var projectFilter = document.getElementById('project_name').value.trim().toLowerCase();  // Get the selected project
+
+    // Loop through table rows and show/hide based on the date range, username, and project
+    var tableRows = document.querySelectorAll('tbody tr');
+    filteredClaims = [];
+
+    tableRows.forEach(function(row) {
+        var dateCell = row.querySelector('td:nth-child(3)'); // Assuming the date is in the third column
+        var usernameCell = row.querySelector('td:nth-child(4)'); // Assuming the username is in the fourth column
+        var projectCell = row.querySelector('td:nth-child(5)'); // Assuming the project name is in the fifth column (adjust if needed)
+
+        if (dateCell && usernameCell && projectCell) {
+            // Get the text content from the date cell
+            var dateString = dateCell.textContent;
+            var parts = dateString.split("-");
+            var day = parseInt(parts[0], 10);
+            var month = parseInt(parts[1], 10) - 1; // Subtract 1 because months are zero-based
+            var year = parseInt(parts[2], 10);
+
+            var claimDate = new Date(Date.UTC(year, month, day)); // Use Date.UTC for consistent timezone handling
+            claimDate.setHours(0, 0, 0, 0);
+
+            // Check if the claim date is within the start and end dates (inclusive)
+            var dateMatch = claimDate >= startDate && claimDate <= endDate;
+
+            // Check if the username matches the filter (case insensitive)
+            var usernameMatch = usernameCell.textContent.toLowerCase().includes(usernameFilter);
+
+            // Check if the project name matches the filter (case insensitive)
+            var projectMatch = projectCell.textContent.toLowerCase().includes(projectFilter);
+
+            // Show the row if all filters match
+            if (dateMatch && usernameMatch && projectMatch) {
+                row.style.display = 'table-row';
+                filteredClaims.push(row); // Store filtered claims in the array
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+
+    // Update totals based on filtered claims
+    updateTotalClaimAmount();
+    updateApprovedAmount();
+
+    function updateSelectedClaims() {
+        var selectedClaims = [];
+        var checkboxes = document.querySelectorAll('input[name="selected-claims"]:checked');
+        checkboxes.forEach(function (checkbox) {
+            selectedClaims.push(checkbox.value);
+        });
+        document.getElementById('selected-claims-input').value = selectedClaims.join(',');
+    }
+
+    // Add an event listener for checkbox changes
+    document.querySelectorAll('input[name="selected-claims"]').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            updateSelectedClaims();
+        });
+    });
+
+    document.getElementById('select-all-checkbox').addEventListener('change', function () {
+        // Get all checkboxes with the class 'claim-checkbox' that are visible
+        var claimCheckboxes = Array.from(document.querySelectorAll('tbody tr')).filter(row => row.style.display !== 'none').map(row => row.querySelector('.claim-checkbox'));
+
+        // Set the checked property of each checkbox to match the 'Select All' checkbox
+        claimCheckboxes.forEach(function (checkbox) {
+            checkbox.checked = document.getElementById('select-all-checkbox').checked;
+        });
+
+        // Update the selected claims input
+        updateSelectedClaims();
+    });
+
+    // Add an event listener for checkbox changes
+    document.querySelectorAll('.claim-checkbox').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            updateSelectedClaims();
+
+            // Check if all visible checkboxes are checked and update the 'Select All' checkbox accordingly
+            var allChecked = Array.from(document.querySelectorAll('tbody tr')).filter(row => row.style.display !== 'none').map(row => row.querySelector('.claim-checkbox')).every(function (checkbox) {
+                return checkbox.checked;
+            });
+
+            document.getElementById('select-all-checkbox').checked = allChecked;
+        });
+    });
+
+    function validateForm() {
+        var checkboxes = document.querySelectorAll('input[name="selected-claims"]:checked');
+        
+        if (checkboxes.length === 0) {
+            alert('Please select at least one claim before submitting.');
+            return false; // Prevent form submission
+        }
+        
+        return true; // Allow form submission
+    }
+});
+
+// Project filter logic (for the "Filter By Project" button)
+document.getElementById('project-button').addEventListener('click', function(event) {
+    event.preventDefault();
+    console.log("Project filter button clicked");
+
+    // Get the selected project filter value
+    var projectFilter = document.getElementById('project_name').value.trim().toLowerCase();
+
+    // Loop through table rows and show/hide based on the selected project
+    var tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(function(row) {
+        var projectCell = row.querySelector('td:nth-child(8)'); // Assuming the project name is in the eighth column (adjust as necessary)
+
+        if (projectCell) {
+            // Check if the project matches the filter (case insensitive)
+            var projectMatch = projectCell.textContent.toLowerCase().includes(projectFilter);
+
+            // Show or hide the row based on the filter
+            if (projectMatch || projectFilter === '') {  // If no project is selected, show all rows
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+});
+
+document.getElementById('select-all-checkboxproject').addEventListener('change', function() {
+    // Get all checkboxes with the class 'claim-checkbox' that are visible (filtered by project)
+    var claimCheckboxes = Array.from(document.querySelectorAll('tbody tr'))
+                                .filter(row => row.style.display !== 'none')
+                                .map(row => row.querySelector('.claim-checkbox'));
+
+    // Set the checked property of each checkbox to match the 'Select All' checkbox
+    claimCheckboxes.forEach(function(checkbox) {
+        checkbox.checked = document.getElementById('select-all-checkboxproject').checked;
+    });
+
+    // Update the selected claims input
+    updateSelectedClaims();
+});
+
+// Modify the generateSelectedClaimsExcel function to respect the filtered claims
+function generateSelectedClaimsExcel() {
+    // Get the selected project filter value
+    var projectFilter = document.getElementById('project_name').value.trim().toLowerCase();
+
+    // Get the selected claims from the checkboxes
+    let selectedClaims = document.querySelectorAll('input[name="selected-claims"]:checked');
+    let selectedClaimsData = [];
+
+    // Use the filtered claims if available, otherwise use all rows
+    let claimsToConsider = Array.from(document.querySelectorAll('tbody tr')).filter(function(row) {
+        return row.style.display !== 'none'; // Only consider visible rows after filtering
+    });
+
+    claimsToConsider.forEach(function (claimRow) {
+        // Get project cell content
+        var projectCell = claimRow.querySelector('td:nth-child(8)'); // Assuming the project name is in the eighth column (adjust if needed)
+
+        // Filter rows by project name
+        if (projectFilter && projectCell && !projectCell.textContent.toLowerCase().includes(projectFilter)) {
+            return; // Skip this row if project doesn't match the filter
+        }
+
+        let claimData = {
+            ClaimNumber: claimRow.querySelector('td:nth-child(2)').textContent,
+            DateofApproval: claimRow.querySelector('td:nth-child(3)').textContent,
+            AssociateName: claimRow.querySelector('td:nth-child(4)').textContent,
+            DTNumber: claimRow.querySelector('td:nth-child(5)').textContent,
+            Department: claimRow.querySelector('td:nth-child(6)').textContent,
+            Manager: claimRow.querySelector('td:nth-child(7)').textContent,
+            Project: claimRow.querySelector('td:nth-child(8)').textContent,
+            Subproject: claimRow.querySelector('td:nth-child(9)').textContent,
+            ExpenseDetails: claimRow.querySelector('td:nth-child(10)').textContent,
+            TotalClaimAmount: claimRow.querySelector('td:nth-child(11)').textContent,
+            ApprovedAmount: claimRow.querySelector('td:nth-child(12)').textContent,
+            AccountStatus: claimRow.querySelector('td:nth-child(13)').textContent,
+        };
+        selectedClaimsData.push(claimData);
+    });
+
+    // Calculate the total amount
+    let totalClaimAmount = 0;
+    let totalApprovedAmount = 0;
+
+    selectedClaimsData.forEach(function (claim) {
+        totalClaimAmount += parseFloat(claim.TotalClaimAmount) || 0;
+        totalApprovedAmount += parseFloat(claim.ApprovedAmount) || 0;
+    });
+
+    // Add the total amounts to the data
+    selectedClaimsData.push({
+        TotalClaimAmount: `Total: ${totalClaimAmount.toFixed(2)}`,
+        ApprovedAmount: `Total: ${totalApprovedAmount.toFixed(2)}`
+    });
+
+    // Make an HTTP request to your Django view to generate the Excel file
+    fetch("{% url 'generate_excel' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        },
+        body: JSON.stringify({ selectedClaims: selectedClaimsData })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        const currentTime = new Date().toLocaleTimeString().replace(/[:\s]/g, ':');
+        a.download = `selected_claims_${projectFilter || 'all_projects'}_${currentTime}.xlsx`;
+
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    });
+}
+
+
+document.querySelector('button.btn-info').addEventListener('click', generateSelectedClaimsExcel);
+
+function downloadVouchers() {
+    var selectedClaims = document.getElementById('selected-claims-input').value;
+    if (!selectedClaims) {
+        alert('Please select at least one claim before downloading vouchers.');
+        return;
+    }
+
+    fetch("{% url 'download_vouchers' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        },
+        body: new URLSearchParams({
+            'selected-claims': selectedClaims
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'Vouchers.zip';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error('Error downloading vouchers:', error);
+    });
+}
+
+document.querySelector('button.btn-warning').addEventListener('click', downloadVouchers);
+
+function updateTotalClaimAmount() {
+    var totalAmount = 0;
+
+    // Loop through table rows and sum the total claim amounts
+    var tableRows = document.querySelectorAll('tbody tr');
+
+    tableRows.forEach(function(row) {
+        var totalAmountCell = row.querySelector('td:nth-child(11)'); // Assuming the total claim amount is in the ninth column
+
+        if (totalAmountCell) {
+            // Get the text content from the total amount cell and convert it to a number
+            var claimAmount = parseFloat(totalAmountCell.textContent) || 0;
+
+            // Add the claim amount to the total
+            totalAmount += claimAmount;
+        }
+    });
+
+    // Update the total amount cell in the footer
+    var totalAmountCellFooter = document.getElementById('total-claim-amount');
+    if (totalAmountCellFooter) {
+        totalAmountCellFooter.textContent = totalAmount.toFixed(2); // Format the total amount to two decimal places
+    }
+}
+
+// Call the function initially to set the total amount
+updateTotalClaimAmount();
+
+function updateApprovedAmount() {
+    var approvedAmount = 0;
+
+    // Loop through table rows and sum the approved amounts
+    var tableRows = document.querySelectorAll('tbody tr');
+
+    tableRows.forEach(function(row) {
+        var approvedAmountCell = row.querySelector('td:nth-child(12)'); // Assuming the approved amount is in the tenth column
+
+        if (approvedAmountCell) {
+            // Get the text content from the approved amount cell and convert it to a number
+            var amount = parseFloat(approvedAmountCell.textContent) || 0;
+
+            // Add the approved amount to the total
+            approvedAmount += amount;
+        }
+    });
+
+    // Update the total amount cell in the footer
+    var approvedAmountCellFooter = document.getElementById('approved-amount');
+    if (approvedAmountCellFooter) {
+        approvedAmountCellFooter.textContent = approvedAmount.toFixed(2);
+    }
+}
+
+updateApprovedAmount();
+
+function goBack() {
+    window.history.back();
+}
+
+
+document.getElementById('username-input').addEventListener('input', filterTable);
+document.getElementById('search-button').addEventListener('click', filterTable);
+document.getElementById('search-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    filterTable();
+});
+
+function filterTable() {
+    var username = document.getElementById('username-input').value.toLowerCase();
+    
+    var tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(function(row) {
+        var usernameCell = row.querySelector('td:nth-child(4)'); // Assuming username is in the 4th column
+        if (usernameCell.textContent.toLowerCase().includes(username)) {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>    
+{% endblock %}
+
+

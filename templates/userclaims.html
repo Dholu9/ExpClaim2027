@@ -1,0 +1,930 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<br></br>
+
+<!-- ===================== Submit Overlay (blur + spinner) ===================== -->
+<style>
+  #submit-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+  }
+
+  #submit-overlay.active {
+    display: flex;
+  }
+
+  body.submitting {
+    overflow: hidden;
+  }
+
+  .submit-overlay-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 40px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    text-align: center;
+    max-width: 320px;
+  }
+
+  .submit-overlay-spinner {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px auto;
+    border: 5px solid #e0e0e0;
+    border-top-color: #007BFF;
+    border-radius: 50%;
+    animation: submit-overlay-spin 0.8s linear infinite;
+  }
+
+  @keyframes submit-overlay-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .submit-overlay-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2a063f;
+    margin: 0;
+  }
+
+  .submit-overlay-subtext {
+    font-size: 13px;
+    color: #666;
+    margin: 6px 0 0 0;
+  }
+
+  /* ===== Duration row (From / To) ===== */
+  .duration-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    width: 220%;
+    margin-bottom: 10px;
+  }
+  .duration-row .duration-field {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .duration-row .duration-sublabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin: 0 0 4px 0;
+    line-height: 1.2;
+  }
+  .duration-row .form-control {
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box;
+  }
+  .duration-error {
+    color: red;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+</style>
+
+<div id="submit-overlay">
+  <div class="submit-overlay-card">
+    <div class="submit-overlay-spinner"></div>
+    <p class="submit-overlay-text">Please wait while we submit your claim...</p>
+    <p class="submit-overlay-subtext">Do not close or refresh this page.</p>
+  </div>
+</div>
+<!-- =========================================================================== -->
+
+<div class="col-md-6 offset-md-3">
+  <!-- Parent Model Form -->
+  <form method="post" action="{% url 'saverecord' %}" class="row g-3" enctype="multipart/form-data" onsubmit="return checkChildForms();" id="claimForm" novalidate>
+
+    {% csrf_token %}
+    
+
+  <div class="col-12">
+    <label for="EmployeeName" class="form-label">EmployeeName</label>
+    <input type="text" class="form-control" id="EmployeeName" name="EmployeeName" value="{{full_name}}" readonly>
+  </div>
+
+  <div class="col-12">
+    <label for="DTNumber" class="form-label">DTNumber</label>
+    <input type="text" class="form-control" id="DTNumber" name="DTNumber" value="{{last_name}}" readonly>
+  </div>
+  
+    <br></br>
+    <br></br>
+
+    <div class="col-md-6">
+      <label for="Department" class="form-label">Department</label>
+      <select id="Department" class="form-select" name="Department" value="{{Department}}" required>
+        <option value="" selected disabled>SELECT</option>
+        <option value="GPM">GPM</option>
+        <option value="GPO">GPO</option>
+        <option value="COE">COE</option>
+        <option value="HR">HR</option>
+        <option value="IT">IT</option>
+        <option value="ADMIN">ADMIN</option>
+        <option value="ACCOUNTS">ACCOUNTS</option>
+        <option value="BUSINESS">BUSINESS</option>
+      </select>
+    </div>
+
+
+    <div class="col-md-6">
+      <label for="Manager" class="form-label">Manager</label>
+      <select id="Manager" class="form-select" name="Manager" value="{{Manager}}" required>
+        <option value="" selected disabled>SELECT</option>
+        <option value="Prabhakara Reddy G V">Prabhakara Reddy G V</option>
+        <option value="Sanjay MS">Sanjay MS</option>
+        <option value="Sudha G Rao">Sudha G Rao</option>
+  
+    
+      </select>
+    </div>
+
+    {% if not is_hr and not is_finance and not is_it and not is_admin %}
+    <div class="col-md-6">
+      <label for="Project" class="form-label">Project</label>
+      <select id="Project" name="Project" class="form-control" required>
+          <option value="" disabled selected>Select a Project</option>
+          {% for project in projects %}
+              <option  value="{{ project.id }}" >{{ project.project_title }}</option>
+          {% endfor %}
+      </select>
+  </div>
+  
+  <div class="col-md-6">
+      <label for="Subproject" class="form-label">Sub-Project</label>
+      <select id="Subproject" name="Subproject" class="form-control" required>
+          <option value="" disabled selected>Select a Sub-Project</option>
+          <!-- Subprojects will be populated here based on the selected project -->
+      </select>
+  </div>
+  {% endif %}
+
+  <div class="col-12">
+  <label for="excelfile" class="form-label fw-semibold">Receipt Details (Excel)</label>
+  <input type="file" class="form-control" id="excelfile" name="excelfile"
+         accept=".xls,.xlsx,.xlsm,.csv" required>
+
+  <div class="alert alert-warning d-flex align-items-start gap-2 py-2 px-3 mt-2 mb-0 small border-0 border-start border-4 border-warning shadow-sm" role="alert">
+    <i class="bi bi-info-circle-fill fs-6 mt-1"></i>
+    <div>
+      <strong>Important:</strong> Please enter all the receipt details along with the
+      amount in an Excel file and attach it here.
+    </div>
+  </div>
+</div>
+    <div class="col-12">
+      <label for="ExpenseDetails" class="form-label">ExpenseDetails</label>
+      <input type="text" class="form-control" id="ExpenseDetails" name="ExpenseDetails" value="{{ExpenseDetails}}" required>
+    </div>
+
+    <div class="col-12">
+      <label for="TotalClaimAmount" class="form-label">TotalClaimAmount</label>
+      <div class="input-group mb-3">
+          <span class="input-group-text">Rs</span>
+          <input type="number" class="form-control" aria-label="Rupees amount (with dot and two decimal places)" name="TotalClaimAmount" id="TotalClaimAmount" value="" readonly>
+      </div>
+  </div>
+    <br>
+    <br>
+    <style>
+       .child-form-section .form-control,
+            .child-form-section .form-select {
+              width: 220%; 
+              margin-bottom: 10px;
+            }
+    </style>
+  
+    <div class="col-md-6">    
+
+      <div id="child-form-container">       
+          <div id="child-form-section" style="display: none;" class="child-form-section">
+              <div class="col-12">
+                  <label for="ReceiptNumber" class="form-label">ReceiptNumber</label>
+                  <input type="text" class="form-control" id="ReceiptNumber" name="ReceiptNumber" value="">
+              </div>
+
+              <!-- ===== Duration: From / To (previously ReceiptDate) ===== -->
+              <div class="col-12">
+                <label class="form-label">Duration</label>
+
+                <div class="duration-row">
+                  <div class="duration-field">
+                    <label for="ReceiptDate" class="duration-sublabel">From</label>
+                    <input type="date" class="form-control" id="ReceiptDate" name="ReceiptDate"
+                           value="" min="{{ minDate }}" max="{{ maxDate }}">
+                  </div>
+
+                  <div class="duration-field">
+                    <label for="ReceiptDate1" class="duration-sublabel">To</label>
+                    <input type="date" class="form-control" id="ReceiptDate1" name="ReceiptDate1"
+                           value="" min="{{ minDate }}" max="{{ maxDate }}">
+                  </div>
+                </div>
+              </div>
+
+              <style>
+                  .small-font {
+                    font-size: 12px; 
+                    color: #2a063f; 
+                    margin-top: 5px; 
+                }
+            </style>
+              <div class="col-12">
+                <label for="BillAttachment" class="form-label">BillAttachment</label>
+                <input class="form-control" type="file" id="BillAttachment" name="BillAttachment" accept=".pdf, .jpeg, .jpg, .tif, .tiff" maxsize="2097152">
+                <span id="selectedFileName"></span>
+                <p class="small-font">Accepted file formats: PDF, JPEG, JPG, TIF, TIFF<br>Maximum file size: 2MB</p>
+            </div>
+       
+            <!-- ===== New ExpenseHead options ===== -->
+            <div class="col-12">
+              <label for="ExpenseHead" class="form-label">ExpenseHead</label>
+              <select id="ExpenseHead" class="form-select" name="ExpenseHead">
+                  <option value="" disabled selected>SELECT</option>
+                  <option value="Field Survey Expense">Field Survey Expense</option>
+                  <option value="Accommodation">Accommodation</option>
+                  <option value="Travel Expenses">Travel Expenses</option>
+                  <option value="Local Conveyance">Local Conveyance</option>
+                  <option value="Courier Charges">Courier Charges</option>
+                  <option value="Internet &amp; Web Charges">Internet &amp; Web Charges</option>
+                  <option value="Staff Welfare">Staff Welfare</option>
+                  <option value="Office Expense">Office Expense</option>
+                  <option value="Travel Expense">Travel Expense</option>
+                  <option value="Printing &amp; Stationary">Printing &amp; Stationary</option>
+                  <option value="Business Promotion">Business Promotion</option>
+                  <option value="Business Development">Business Development</option>
+                  <option value="Food Expense">Food Expense</option>
+                  <option value="Telephone Expenses">Telephone Expenses</option>
+                  <option value="Software Subscription Expense">Software Subscription Expense</option>
+              </select>
+          </div>
+          
+            
+
+          <div class="col-12">
+            <label for="ClaimAmounts" class="form-label">ClaimAmount</label>
+            <div class="input-group mb-3">
+                <span class="input-group-text">Rs</span>
+                <input type="number" class="form-control" aria-label="Rupees amount (with dot and two decimal places)" name="ClaimAmounts">
+            </div>
+            <div class="error-message" style="color: red; display: none;"></div>
+        </div>
+              
+
+              <div class="col-12">
+                  <label for="remarks" class="form-label">Remarks*</label>
+                  <input type="text" class="form-control py-4" name="Remarks" value="">
+              </div>
+          </div>
+
+          <br></br>
+      </div>
+  </div>
+  <style>
+    #go-back-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1;
+    }
+  </style>
+  
+  <div class="col-12">
+  <div class="add-child-link-section">
+    
+    <button type="button" class="btn btn-primary" onclick="toggleChildForm();">Add Claim</button>
+  </div>
+</div>
+<div class="offset-md-10">
+  <button type="button" name="action" value="validate" id="validateButton" onclick="checkChildForms();" class="btn btn-primary">Validate</button>
+  <button type="submit" name="action" value="submit" style="display: none;" id="submitButton" class="btn btn-primary">Submit</button>
+</div>
+ 
+  </form>
+  <br>
+  
+</div>
+<button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+
+
+<script>
+
+/* =========================================================================
+   Duration (From / To) helpers — must be defined before use
+   ========================================================================= */
+
+// Returns true if the row's From <= To (or either is blank).
+// If invalid, shows an inline red message under the Duration block.
+// If showAlert is true, also pops an alert.
+function validateDurationRow(section, showAlert) {
+    if (!section) return true;
+
+    var fromEl = section.querySelector('[name="ReceiptDate"]');
+    var toEl   = section.querySelector('[name="ReceiptDate1"]');
+    if (!fromEl || !toEl) return true;
+
+    // Remove any previous inline error inside this section
+    var existingErr = section.querySelector('.duration-error');
+    if (existingErr) existingErr.remove();
+
+    if (!fromEl.value || !toEl.value) return true; // nothing to compare
+
+    var fromDate = new Date(fromEl.value + 'T00:00:00');
+    var toDate   = new Date(toEl.value   + 'T00:00:00');
+
+    if (fromDate > toDate) {
+        // Attach the error right below the duration-row
+        var durationRow = section.querySelector('.duration-row');
+        if (durationRow) {
+            var err = document.createElement('div');
+            err.className = 'duration-error';
+            err.textContent = '"From" date cannot be later than "To" date.';
+            durationRow.parentElement.appendChild(err);
+        }
+        if (showAlert) {
+            alert('"From" date cannot be later than "To" date. Please correct the Duration.');
+        }
+        return false;
+    }
+    return true;
+}
+
+// Live check: whenever either date changes in any row, re-validate that row.
+document.addEventListener('change', function (event) {
+    if (!event.target) return;
+    if (event.target.name === 'ReceiptDate' || event.target.name === 'ReceiptDate1') {
+        var section = event.target.closest('.child-form-section');
+        if (!section) return;
+
+        var ok = validateDurationRow(section, false);
+
+        // If the user just changed the "To" field and it ended up earlier
+        // than "From", clear the To so they can pick again. The inline
+        // message stays.
+        if (!ok && event.target.name === 'ReceiptDate1') {
+            event.target.value = '';
+        }
+
+        // Also make the "To" field's min follow the "From" value.
+        if (event.target.name === 'ReceiptDate') {
+            var toEl = section.querySelector('[name="ReceiptDate1"]');
+            if (toEl) toEl.min = event.target.value || '';
+        }
+    }
+});
+
+
+/* =========================================================================
+   Original form logic (unchanged except where noted)
+   ========================================================================= */
+
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('claimForm');
+    form.addEventListener('submit', function(event) {
+        var fileInputs = document.querySelectorAll('input[name="BillAttachment"]');
+        var invalidFile = false;
+
+        fileInputs.forEach(function(fileInput) {
+            if (fileInput.files.length === 0) {
+                return;
+            }
+            var fileName = fileInput.value;
+            var fileExtension = fileName.split('.').pop().toLowerCase();
+            var allowedFormats = ['pdf', 'jpg', 'jpeg', 'png'];
+
+            if (!allowedFormats.includes(fileExtension)) {
+                alert("Please upload a file in one of the following formats: PDF, JPG, JPEG, PNG");
+                fileInput.value = '';
+                invalidFile = true;
+            }
+        });
+
+        if (invalidFile) {
+            event.preventDefault();
+        }
+    });
+});
+
+
+
+var initialChildFormSection = document.getElementById("child-form-section");
+initialChildFormSection.style.display = "none";
+
+var clonedChildForms = [];
+
+function toggleChildForm() {
+    var childFormSection = document.getElementById("child-form-section");
+    var clonedChildFormSection = childFormSection.cloneNode(true);
+
+    var clonedInputs = clonedChildFormSection.querySelectorAll("input:not([type=file]):not(#BillAttachment)");
+    for (var i = 0; i < clonedInputs.length; i++) {
+        clonedInputs[i].value = "";
+        clonedInputs[i].required = true;
+    }
+
+    var clonedSelects = clonedChildFormSection.querySelectorAll("select:not(#BillAttachment)");
+    for (var i = 0; i < clonedSelects.length; i++) {
+        clonedSelects[i].value = "";
+        clonedSelects[i].required = true;
+    }
+
+    var billAttachmentInput = clonedChildFormSection.querySelector("#BillAttachment");
+    if (billAttachmentInput) {
+        billAttachmentInput.value = "";
+        billAttachmentInput.required = true;
+    }
+
+    var removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "btn btn-danger";
+    removeButton.innerHTML = "Delete";
+    removeButton.onclick = function () {
+        removeChildForm(this);
+    };
+
+    clonedChildFormSection.appendChild(removeButton);
+    if (separator) {
+        separator.remove();
+    }
+
+
+    clonedChildFormSection.style.display = "block";
+    var separator = document.createElement("hr");
+
+    separator.style.border = "none";
+    separator.style.backgroundColor = "#007BFF";
+    separator.style.height = "3px"; 
+    separator.style.margin = "10px";
+    separator.style.width = "200%";
+
+    var childFormContainer = document.createElement("div");
+    childFormContainer.className = "child-form-container";
+
+    childFormContainer.appendChild(clonedChildFormSection);
+    childFormContainer.appendChild(separator);
+    
+
+    childFormSection.parentNode.appendChild(childFormContainer);
+
+    clonedChildForms.push(childFormContainer);
+
+}
+
+
+
+function removeChildForm(button) {
+    var childFormSection = button.parentElement;
+    var separator = childFormSection.nextElementSibling;
+
+    childFormSection.remove();
+    separator.remove();
+}
+
+    
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('claimForm');
+
+    function checkFileFormats() {
+        var invalidFile = false;
+
+        // ---- NEW (Excel): extension check ----
+        var excelInput = document.getElementById('excelfile');
+        if (excelInput && excelInput.files.length > 0) {
+            var excelExt = excelInput.files[0].name.split('.').pop().toLowerCase();
+            if (['xls', 'xlsx', 'xlsm', 'csv'].indexOf(excelExt) === -1) {
+                alert("Receipt Details must be an Excel/CSV file (.xls, .xlsx, .xlsm, .csv).");
+                excelInput.value = '';
+                return false;
+            }
+        }
+        // ---- end NEW (Excel) ----
+
+        var fileInputs = document.querySelectorAll('input[name="BillAttachment"]');
+
+        fileInputs.forEach(function(fileInput) {
+            var fileName = fileInput.value;
+            var fileExtension = fileName.split('.').pop().toLowerCase();
+            var allowedFormats = ['pdf', 'jpg', 'jpeg', 'png'];
+
+            if (fileInput.files.length > 0 && !allowedFormats.includes(fileExtension)) {
+                invalidFile = true;
+            }
+        });
+
+        if (invalidFile) {
+            alert("Please upload a file in one of the following formats: PDF, JPG, JPEG, PNG.");
+            return false;
+        }
+        return true;
+    }
+
+    function checkChildForms() {
+        var filled = false;
+        var claimAmountsSet = new Set();
+        var hasDuplicateClaimAmount = false;
+
+        document.querySelectorAll('.error-message').forEach(function(msg) {
+            msg.style.display = 'none';
+            msg.textContent = '';
+        });
+
+        // ---- NEW (Excel): file must be attached ----
+        var excelInputCheck = document.getElementById('excelfile');
+        if (!excelInputCheck || excelInputCheck.files.length === 0) {
+            alert("Please attach the Receipt Details Excel file.");
+            if (excelInputCheck) excelInputCheck.focus();
+            return false;
+        }
+        // ---- end NEW (Excel) ----
+
+        // ---- NEW: Duration (From <= To) validation on every visible row ----
+        var durationOk = true;
+        var firstBadFrom = null;
+
+        document.querySelectorAll('.child-form-section').forEach(function(section) {
+            if (section.offsetParent === null) return; // hidden
+            var ok = validateDurationRow(section, true);
+            if (!ok) {
+                durationOk = false;
+                if (!firstBadFrom) {
+                    var fromEl = section.querySelector('[name="ReceiptDate"]');
+                    if (fromEl) firstBadFrom = fromEl;
+                }
+            }
+        });
+
+        if (!durationOk) {
+            if (firstBadFrom) {
+                firstBadFrom.focus();
+                firstBadFrom.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+        }
+        // ---- end NEW ----
+
+        clonedChildForms.forEach(function(clonedChildForm) {
+            var inputs = clonedChildForm.querySelectorAll('input:not([type=file]):not(#BillAttachment)');
+            var selects = clonedChildForm.querySelectorAll('select:not(#BillAttachment)');
+            var claimAmountInput = clonedChildForm.querySelector('input[name="ClaimAmounts"]');
+            var errorMsg = clonedChildForm.querySelector('.error-message');
+
+            for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i].value) {
+                    filled = true;
+                    break;
+                }
+            }
+
+            for (var i = 0; i < selects.length; i++) {
+                if (selects[i].value) {
+                    filled = true;
+                    break;
+                }
+            }
+
+            if (claimAmountInput && claimAmountInput.value) {
+                var claimAmount = parseFloat(claimAmountInput.value) || 0;
+
+                if (claimAmountsSet.has(claimAmount)) {
+                    hasDuplicateClaimAmount = true;
+                } else {
+                    claimAmountsSet.add(claimAmount);
+                }
+            }
+        });
+
+        if (!filled) {
+            alert("Please fill at least one expense before validating.");
+            return false;
+        }
+
+        if (hasDuplicateClaimAmount) {
+            alert("Duplicate claim amounts detected! Please review the entries.");
+        }
+
+        document.getElementById('validateButton').style.display = 'none';
+        document.getElementById('submitButton').style.display = 'block';
+
+        return true;
+    }
+
+    // Expose to global scope so inline onclick handlers can use it
+    window.checkChildForms = checkChildForms;
+
+    form.addEventListener('submit', function(event) {
+        if (!checkChildForms()) {
+            event.preventDefault();
+        }
+    });
+
+    document.getElementById('submitButton').onclick = function(event) {
+        if (!checkFileFormats()) {
+            event.preventDefault();
+        }
+    };
+
+    document.getElementById('validateButton').addEventListener('click', function() {
+        checkChildForms();
+    });
+});
+
+
+
+
+
+function calculateTotalClaimAmount() {
+    var claimAmountInputs = document.querySelectorAll('input[name="ClaimAmounts"]');
+    var totalClaimAmountInput = document.getElementById('TotalClaimAmount');
+    var totalClaimAmount = 0;
+
+    claimAmountInputs.forEach(function (input) {
+        var claimAmount = parseFloat(input.value) || 0;
+        totalClaimAmount += claimAmount;
+    });
+
+    totalClaimAmountInput.value = totalClaimAmount.toFixed(2);
+}
+
+window.addEventListener('load', calculateTotalClaimAmount);
+
+document.addEventListener('input', function (event) {
+    if (event.target.name === 'ClaimAmounts') {
+        calculateTotalClaimAmount();
+    }
+});
+
+var currentDate = new Date();
+
+currentDate.setDate(currentDate.getDate() - 45);
+
+var fortyFiveDaysBeforeNow = currentDate.toISOString().split('T')[0];
+
+var today = new Date().toISOString().split('T')[0];
+var initialReceiptDateEl = document.getElementById('ReceiptDate');
+if (initialReceiptDateEl) {
+    initialReceiptDateEl.setAttribute('max', today);
+    initialReceiptDateEl.setAttribute('min', fortyFiveDaysBeforeNow);
+}
+
+var receiptDate1El = document.getElementById('ReceiptDate1');
+if (receiptDate1El) {
+    receiptDate1El.setAttribute('max', today);
+    receiptDate1El.setAttribute('min', fortyFiveDaysBeforeNow);
+}
+
+function goBack() {
+    window.history.back();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const projectSelect = document.getElementById('Project');
+    const subprojectSelect = document.getElementById('Subproject');
+
+    if (projectSelect && subprojectSelect) {
+        projectSelect.addEventListener('change', function () {
+            const selectedProjectId = projectSelect.value;
+
+            if (selectedProjectId) {
+                fetch(`/get-subprojects/?project_id=${selectedProjectId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch subprojects');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.subprojects && data.subprojects.length > 0) {
+                        subprojectSelect.innerHTML = '<option value="" disabled selected>Select a Sub-Project</option>';
+
+                        data.subprojects.forEach(function (subproject) {
+                            const option = document.createElement('option');
+                            option.value = subproject.subproject_id;
+                            option.textContent = subproject.subproject_title;
+                            subprojectSelect.appendChild(option);
+                        });
+
+                        subprojectSelect.setAttribute('required', 'required');
+                    } else {
+                        subprojectSelect.innerHTML = '<option value="" disabled selected>No subprojects found</option>';
+                        subprojectSelect.removeAttribute('required');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching subprojects:', error);
+                    subprojectSelect.innerHTML = '<option value="" disabled selected>Error fetching subprojects</option>';
+                    subprojectSelect.removeAttribute('required');
+                });
+            } else {
+                subprojectSelect.innerHTML = '<option value="" disabled selected>Select a Sub-Project</option>';
+                subprojectSelect.removeAttribute('required');
+            }
+        });
+    }
+});
+
+
+// ---- Auto-save form drafts ----
+const AUTOSAVE_KEY = 'claim_form_draft_v1';
+
+function serializeFormForAutosave() {
+    const data = {
+        Department: document.getElementById('Department').value,
+        Manager: document.getElementById('Manager').value,
+        ExpenseDetails: document.getElementById('ExpenseDetails').value,
+        Project: document.getElementById('Project')?.value || '',
+        Subproject: document.getElementById('Subproject')?.value || '',
+        children: []
+    };
+
+    document.querySelectorAll('.child-form-section').forEach(function(section) {
+        if (section.style.display === 'none') return;
+        data.children.push({
+            ReceiptNumber: section.querySelector('[name="ReceiptNumber"]')?.value || '',
+            ReceiptDate: section.querySelector('[name="ReceiptDate"]')?.value || '',
+            ReceiptDate1: section.querySelector('[name="ReceiptDate1"]')?.value || '',
+            ExpenseHead: section.querySelector('[name="ExpenseHead"]')?.value || '',
+            ClaimAmounts: section.querySelector('[name="ClaimAmounts"]')?.value || '',
+            Remarks: section.querySelector('[name="Remarks"]')?.value || ''
+        });
+    });
+
+    try {
+        sessionStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    } catch (e) {
+        console.warn('Autosave failed:', e);
+    }
+}
+
+let autosaveTimer;
+function scheduleAutosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(serializeFormForAutosave, 800);
+}
+document.addEventListener('input', scheduleAutosave);
+document.addEventListener('change', scheduleAutosave);
+
+// ---- Async submission ----
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('claimForm');
+    var overlay = document.getElementById('submit-overlay');
+    var overlayText = document.querySelector('.submit-overlay-text');
+
+    form.addEventListener('submit', function (event) {
+        if (event.defaultPrevented) {
+            return;
+        }
+        event.preventDefault();
+
+        sessionStorage.removeItem(AUTOSAVE_KEY);
+        overlay.classList.add('active');
+        document.body.classList.add('submitting');
+        overlayText.textContent = 'Please wait while we submit your claim...';
+
+        submitClaimAsync().catch(function (err) {
+            console.error(err);
+            alert('Something went wrong while submitting your claim. Please try again.');
+            overlay.classList.remove('active');
+            document.body.classList.remove('submitting');
+        });
+    });
+
+    async function submitClaimAsync() {
+        var csrftoken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // ---- NEW: Duration (From <= To) guard before creating anything ----
+        var rowsToCheck = [];
+        var initialRowCheck = document.getElementById('child-form-section');
+        if (initialRowCheck.style.display !== 'none') rowsToCheck.push(initialRowCheck);
+        clonedChildForms.forEach(function (container) {
+            var section = container.querySelector('.child-form-section');
+            if (section) rowsToCheck.push(section);
+        });
+
+        for (var k = 0; k < rowsToCheck.length; k++) {
+            var fromEl = rowsToCheck[k].querySelector('[name="ReceiptDate"]');
+            var toEl   = rowsToCheck[k].querySelector('[name="ReceiptDate1"]');
+            if (fromEl && toEl && fromEl.value && toEl.value) {
+                if (new Date(fromEl.value) > new Date(toEl.value)) {
+                    overlay.classList.remove('active');
+                    document.body.classList.remove('submitting');
+                    alert('Row ' + (k + 1) + ': "From" date cannot be later than "To" date.');
+                    fromEl.focus();
+                    fromEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+            }
+        }
+        // ---- end guard ----
+
+        // ---- NEW (Excel): file must be attached before creating anything ----
+        var excelInput = document.getElementById('excelfile');
+        if (!excelInput || excelInput.files.length === 0) {
+            overlay.classList.remove('active');
+            document.body.classList.remove('submitting');
+            alert('Please attach the Receipt Details Excel file.');
+            return;
+        }
+        // ---- end NEW (Excel) ----
+
+        // -------- Step 1: create the parent claim record --------
+        var parentFormData = new FormData();
+        var dateEl = document.getElementById('DateofCreation');
+        parentFormData.append('DateofCreation', dateEl ? dateEl.value : '');
+        parentFormData.append('Department', document.getElementById('Department').value);
+        parentFormData.append('Manager', document.getElementById('Manager').value);
+        parentFormData.append('ExpenseDetails', document.getElementById('ExpenseDetails').value);
+
+        var projectEl = document.getElementById('Project');
+        var subprojectEl = document.getElementById('Subproject');
+        if (projectEl) parentFormData.append('Project', projectEl.value);
+        if (subprojectEl) parentFormData.append('Subproject', subprojectEl.value);
+
+        // ---- NEW (Excel): send the file so the backend can save it ----
+        parentFormData.append('excelfile', excelInput.files[0]);
+        // ---- end NEW (Excel) ----
+
+        var parentResp = await fetch("{% url 'create_claim_parent' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: parentFormData
+        });
+        if (!parentResp.ok) {
+            throw new Error('Failed to create claim record');
+        }
+        var parentData = await parentResp.json();
+        var parentId = parentData.parent_id;
+
+        // -------- Step 2: gather each visible receipt row --------
+        var rows = [];
+        var initialRow = document.getElementById('child-form-section');
+        if (initialRow.style.display !== 'none') {
+            rows.push(initialRow);
+        }
+        clonedChildForms.forEach(function (container) {
+            var section = container.querySelector('.child-form-section');
+            if (section) rows.push(section);
+        });
+
+        var totalClaimAmountInput = document.getElementById('TotalClaimAmount');
+
+        // -------- Step 3: upload each receipt one at a time --------
+        for (var i = 0; i < rows.length; i++) {
+            overlayText.textContent = 'Uploading bill ' + (i + 1) + ' of ' + rows.length + '...';
+
+            var row = rows[i];
+            var fd = new FormData();
+            fd.append('parent_id', parentId);
+            fd.append('ReceiptNumber', row.querySelector('[name="ReceiptNumber"]')?.value || '');
+            fd.append('ReceiptDate', row.querySelector('[name="ReceiptDate"]')?.value || '');
+            fd.append('ReceiptDate1', row.querySelector('[name="ReceiptDate1"]')?.value || '');
+            fd.append('ExpenseHead', row.querySelector('[name="ExpenseHead"]')?.value || '');
+            fd.append('ClaimAmount', row.querySelector('[name="ClaimAmounts"]')?.value || '0');
+            fd.append('Remarks', row.querySelector('[name="Remarks"]')?.value || '');
+            fd.append('TotalClaimAmount', totalClaimAmountInput.value || '0');
+
+            var fileInput = row.querySelector('input[type="file"][name="BillAttachment"]');
+            if (fileInput && fileInput.files.length > 0) {
+                fd.append('BillAttachment', fileInput.files[0]);
+            }
+
+            var resp = await fetch("{% url 'add_claim_receipt' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+                body: fd
+            });
+            if (!resp.ok) {
+                throw new Error('Failed to upload bill ' + (i + 1));
+            }
+        }
+
+        overlayText.textContent = 'Finishing up...';
+        window.location.href = "{% url 'entereddata' %}";
+    }
+});
+
+  </script>
+
+
+
+{% endblock %}

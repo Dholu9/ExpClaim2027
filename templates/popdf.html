@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Claim Portal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #191b1d;
+            page-break-after: always;
+        }
+
+        h1, h3, h4 {
+            text-align: center;
+            color: rgb(51, 107, 170);
+            margin: 0;
+        }
+
+        h1 { font-size: 1.3em; }
+        h3 { font-size: 1.1em; }
+        h4 { font-size: 1em; }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .column {
+            width: 48%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 4px;
+            text-align: left;
+            font-size: 0.6em;
+        }
+
+        th {
+            background-color: #f1f1f1;
+            font-weight: bold;
+            font-size: 0.6em;
+        }
+
+        .small-font {
+            font-size: 0.6em; /* Smaller font size */
+        }
+
+        .terms {
+            margin-top: 20px;
+          
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: purple;
+            font-size: 0.7em;
+            padding: 10px 0;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .footer p {
+            margin: 0;
+        }
+
+        .column p {
+            margin: 0;
+            font-size: 0.8em;
+        }
+
+        .bordered-box {
+            border: 1px solid black;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                padding: 10mm;
+                box-shadow: none;
+                margin: 0;
+            }
+            .header, .footer {
+                margin: 0;
+            }
+            .content {
+                margin: 0;
+            }
+        }
+
+        .terms p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .content {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+    
+
+        #download-button {
+            background-color: #007bff;
+        }
+
+        #move-to-dashboard {
+            background-color: #28a745;
+        }
+
+    </style>
+</head>
+<body> 
+
+
+    <button id="download-button" 
+    style="font-size: 16px; padding: 20px 20px; background-color: #7091b4; 
+            color: white; border: none; border-radius: 5px; cursor: pointer;">
+Generate PDF
+</button>
+       
+
+ 
+    
+    <div class="container">     
+        <div class="header">
+            <h1>Bellissimo Ventures Private Limited</h1>
+            <h3>(Deduce Technologies<sup style="font-size: small;">®</sup>)</h3>
+            <h4>PURCHASE ORDER</h4>
+        </div>
+        <div class="row">
+            <div class="column bordered-box">
+                <p>Address:</p>
+                <p style="font-size: 15px;">
+                    {% if "BNG" in PONumber %}
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>Brigade Software Park (BSP), 6th Floor, 27th Cross Road,</p>
+                        <p>BSK II Stage, Banashankari,</p>
+                        <p>Bengaluru, Karnataka 560070,</p>
+                        <p>GST Number: 29AAHCB5498H1Z4,</p>
+                        <p>PAN: AAHCB5498H</p>
+                    {% elif "GGN" in PONumber %}
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>D-1103, The Light House, Town Square,</p>
+                        <p>Sector- 82, Vatika India Next,</p>
+                        <p>Gurugram, Haryana- 122004</p>
+                        <p>GST Number: 06AAHCB5498H1ZC,</p>
+                    {% elif "SLM" in PONumber %}  
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>ELCO-SEZ IT Park ,P424+76G Dalmiya colony,</p>
+                        <p>Jagir Ammapalayam, Vellakalpatti,</p>
+                        <p>Salem, Tamil Nadu 636012</p>
+                        <p>PAN: AAHCB5498H</p>
+                        <p>GST Number: 33AAHCB5498H1ZF</p>
+                    {% elif "KMN" in PONumber %}  
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>4th Floor, IT Tower,</p>
+                        <p>Street Road, Sircilla Bypass Road,</p>
+                        <p>Karimnagar , Telangana - 505001</p>               
+                        <p>GST Number: 36AAHCB5498H1Z9</p>
+
+                    {% else %}
+                        <p>{{ PONumber }} <!-- Fallback to the default address --></p>
+                    {% endif %}
+                </p>
+            </div>            
+            <div class="column bordered-box">
+                <p>Ship To:</p>
+            <p style="font-size: 13px;"> {{ ShipTo }}</p>
+            </div>
+            <div class="column bordered-box">
+                <p>Vendor:</p>
+                <p><strong>Name:</strong> {{ vendor.VendorName }}</p>
+                <p><strong>Email:</strong> {{ vendor.VendorEmail }}</p>
+                <p><strong>GST:</strong> {{ vendor.VendorGST }}</p>
+                <p><strong>Bank Name:</strong> {{ vendor.BankName }}</p>
+                <p><strong>Account Number:</strong> {{ vendor.AccountNumber }}</p>
+                <p><strong>IFSC Code:</strong> {{ vendor.IFSCCode }}</p>
+                <p><strong>Mobile:</strong> {{ vendor.MobileNumber }}</p>
+                <p><strong>Address:</strong> {{ vendor.PlotNumber }}, {{ vendor.StreetName }}, {{ vendor.Locality }}, {{ vendor.City }} - {{ vendor.Pincode }}, {{ vendor.State }}</p>
+            </div>
+        </div>    
+        <table id="purchase-order-table">
+            <tr>
+                <th>PO Reference</th>
+                <td>{{ POReference }}</td>
+            </tr>
+            <tr>
+                <th>PO Number</th>
+                <td>{{ PONumber }}</td>
+            </tr>
+            <tr>
+                <th>Vendor Reference</th>
+                <td>{{ VendorReference }}</td>
+            </tr>
+            <tr>
+                <th>Date</th>
+                <td>{{ PODate }}</td>
+            </tr>
+            <tr style="display: none;">
+                <th>ApprovalFrom</th>
+                <td>{{ ApprovalFrom }}</td>
+            </tr>
+            <tr style="display: none;">
+                <th>POEmailCopy</th>
+                <td>{{ emailCopyPath}}</td>
+            </tr>
+        </table>
+        <div> 
+            {% if childForms %}
+                <table id="item-table">
+                    <thead>
+                        <tr>
+                            <th>Sn No.</th>
+                            <th>Description</th>
+                            <th>HSN/SAC Code</th>
+                            <th>Quantity</th>            
+                            <th>Unit Rate</th>
+                            <th>Basic Value(INR)</th>
+                            <th>GST Rate(%)</th>                           
+                            <th>GST Amount(INR)</th>                          
+                            <th>Total Order Value(INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for child in childForms %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ child.Description }}</td>
+                                <td>{{ child.HSNCode }}</td>                                
+                                <td>{{ child.Quantity }}</td>
+                                <td>{{ child.Rate }}</td>
+                                <td>{{ child.Amount }}</td>                              
+                                <td>{{ child.GSTPercentage }}</td>
+                                <td>{{ child.GSTAmount }}</td> 
+                                <td>{{ child.TotalAmount }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="total-amounts" style="margin-top: 20px;">
+                    <table>
+                        <tr>
+                            <th>Order Value(INR)</th>
+                            <td style="text-align: right;">{{ totalAmountSum }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Total GST Value (INR)</th>
+                            <td style="text-align: right;">{{ total_gst_sum }}</td>                         
+                            
+                        </tr>
+                        <tr>
+                            <th>Total Order Value (Inclusive GST)(INR)</th>
+                            <td style="text-align: right;">{{ totalAmountTotal }}</td>                         
+                            
+                        </tr>
+                        <tr>
+                            <th>Total Order Value (In Words)</th>
+                            <td style="text-align: right;">Indian Rupees-{{totalAmountTotalWords}} Only</td>              
+                            
+                        </tr>                    
+                    </table>
+                </div>
+            {% else %}
+                <p>No Products submitted.</p>
+            {% endif %}
+        </div>
+
+        <div class="terms" id="terms-section">
+            <p style="font-weight: bolder;">TERMS / SPECIAL INSTRUCTIONS:</p>
+            <br>
+            {% for line in Terms.splitlines %}
+                <p>{{ line }}</p>
+            {% endfor %}
+            <p>Note: Please quote PO number in all invoices.</p>
+        </div>      
+
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; font-size: 0.7em;">
+            <div style="text-align: center; width: 20%;">
+                <p>Approved By</p>
+            </div>
+            <br>          
+            <p style="margin: 0;">(MAHIMA SHRIVASTAVA)</p>
+            <p style="margin: 0;">Authorized Signatory</p>
+        </div>
+        <p style="text-align: center; font-size: small;">This a system generated PO. Signature not required.</p>
+        <div class="footer" id="footer"> 
+            <p>DO THINGS DIFFERENTLY</p>
+            <p>Registered Office: Unit No. RET-004, Tower D, 11-1103 The Light House, Gurugram, Haryana-122012, INDIA</p>
+            <p>Tel No: +91 7899 75 65 65; CIN No: U74999HR2017PTC071715; URL: www.deducetech.com</p>         
+        </div>     
+    </div>
+    <form action="{% url 'poreport' %}" method="get">
+        <button type="submit" id="move-to-dashboard" 
+        style="font-size: 16px; padding: 20px 20px; background-color: #bbc55f; 
+                       color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Move To Dashboard
+        </button>
+    </form>  
+        <!-- PDF Generation Button --> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        let pdfGenerated = false; 
+    
+        // Event listener for the "Generate PDF" button
+        document.getElementById('download-button').addEventListener('click', async function(event) {
+            // Prevent immediate redirection
+            event.preventDefault();    
+            const itemTable = document.getElementById('item-table');
+            const rows = itemTable.querySelectorAll('tbody tr');
+            const termsSection = document.getElementById('terms-section');
+            const element = document.querySelector('.container'); 
+            const footer = document.getElementById('footer');           
+            // Check if more than 3 rows
+            if (rows.length > 3) {
+                itemTable.style.fontSize = '1.2em'; // Set specific font size
+                termsSection.classList.add('page-break'); // Add page break class
+            }
+    
+            // Adjust font size for terms based on the number of lines
+            const termsLines = termsSection.querySelectorAll('p').length;
+            if (termsLines < 15) {
+                termsSection.style.fontSize = '0.8em'; // Smaller font size for more lines
+            } else if (termsLines > 15) {
+                termsSection.style.fontSize = '0.6em'; // Slightly smaller font size
+               
+                
+            }
+    
+            // Custom A4 width (210mm) increased by 20%
+            const customWidth = 210 * 1.2; // 120% of A4 width
+            const customHeight = 297; // A4 height
+    
+           // Create a PDF
+await html2pdf()
+    .from(element)
+    .set({
+        margin: [0, 0, 0, 0], // Remove the top margin, you can adjust it as needed
+        filename: 'purchase_order.pdf',
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 2 },
+        jsPDF: {
+            unit: 'mm',
+            format: [customWidth, customHeight], // Use custom width
+            orientation: 'portrait',
+            margin: [0, 0, 10, 0], // Remove extra space on the top, set margins if needed
+            putOnlyUsedFonts: true,
+            floatPrecision: 16
+        }
+    })
+    .save();
+
+    
+            // Set pdfGenerated to true after PDF is created
+            pdfGenerated = true;    
+            // Prepare data for saving PO record
+            const formData = new FormData();
+            formData.append('VendorSelection', '{{ vendor.VendorName }}'); // Use actual data here
+            formData.append('PONumber', '{{ PONumber }}');
+            formData.append('POReference', '{{ POReference }}');
+            formData.append('ApprovalFrom', '{{ ApprovalFrom }}'); // Replace with actual data
+            formData.append('VendorReference', '{{ VendorReference }}');
+            formData.append('PODate', '{{ PODate }}'); // Replace with actual data
+            formData.append('POEmailCopy', '{{ emailCopyPath }}'); // Replace with actual data
+    
+            // Make the API call to save the PO record
+            const response = await fetch('/save_po_record/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}', // Include CSRF token
+                }
+            });
+    
+            const result = await response.json();
+            console.log(result); 
+            if (result.success) {
+                alert(result.message); // Show success message
+            } else {
+                alert(result.message); // Show error message
+            }
+        });
+    
+        // Event listener for the "Move to Dashboard" button
+        document.getElementById('move-to-dashboard').addEventListener('click', function(event) {
+            if (!pdfGenerated) {
+                // If PDF wasn't generated, show a confirmation dialog
+                const confirmation = confirm("Have you clicked on the 'Generate PDF' button?");
+                
+                // If user cancels, stop form submission and stay on the current page
+                if (!confirmation) {
+                    event.preventDefault();
+                    alert("Please generate the PDF before proceeding.");
+                }
+            }
+        });
+    </script>        
+</body>
+</html>

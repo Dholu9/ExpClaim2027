@@ -1,0 +1,31 @@
+{% extends 'base.html' %} 
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+
+{% block content %} 
+  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div style="background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: 8px; padding: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top: -80px;">
+      <h3 style="color: #007bff;">Replace Bill Attachment</h3>
+      <p>Upload a new file to replace the existing one for your receipt</p>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="new_bill_attachment" required style="margin-bottom: 10px;">
+        <style>
+        .small-font2 {
+            font-size: 12px; 
+            color: #2a063f; 
+            margin-top: 5px; 
+        }
+    </style>
+
+        <p class="small-font2">Accepted file formats: PDF, JPEG, JPG, TIF, TIFF<br>Maximum file size: 2MB</p>
+        <button type="submit" style="background-color: #007bff; color: #fff; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Replace</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+

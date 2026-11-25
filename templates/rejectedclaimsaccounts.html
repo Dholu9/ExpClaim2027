@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 700px; /* Adjust max-height as needed */
+    overflow-y: auto; /* Vertical scroll for overflow */
+    overflow-x: auto; /* Horizontal scroll for overflow */
+    margin: 0;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse; /* Ensure borders and spacing are collapsed */
+    table-layout: fixed; /* Ensures fixed layout */
+  }
+
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: rgb(74, 75, 71);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    border-right: 2px solid #380a0a;
+  }
+
+  th {
+    position: sticky; /* Makes the header sticky */
+    top: 0; /* Set the top position for sticky behavior */
+    background-color: rgb(207, 219, 224); /* Background color for visibility */
+    text-align: center;
+    font-size: 14px;
+    color: rgb(43, 26, 53);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    z-index: 10; /* Ensures it stays above other content when scrolling */
+  }
+
+  .rejected-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 0 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #fdecec;
+    border: 1px solid #f1a9a9;
+    color: #8a1f1f;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .rejected-count .num-badge {
+    background: #d64545;
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 10px;
+  }
+
+  @media (max-width: 1440px) {
+    /* Adjust styles for small MacBooks (13-inch models) */
+    td, th {
+      font-size: 10px;
+      padding: 10px;
+    }
+  }
+  @media (max-width: 320px) {
+    td, th {
+      font-size: 8px;
+      padding: 8px;
+    }
+  }
+
+  /* Adjustments for mobile phones (portrait mode) */
+  @media (max-width: 480px) {
+    td, th {
+      font-size: 8px;
+      padding: 10px;
+    }
+  }
+
+  /* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+  @media (max-width: 768px) {
+    td, th {
+      font-size: 8px;
+      padding: 12px;
+    }
+  }
+</style>
+ <br><br>
+ <div class="col-12 offset-md-2">
+  <h6 style="color: rgb(87, 113, 185);">Search by Username</h6>
+  <!-- Search inputs: they filter the table while typing -->
+  <form id="search-form">
+    <div id="live-region" class="visually-hidden visually-hidden-fallback" role="status" aria-live="polite" aria-atomic="true"></div>
+      <input type="text" id="username-input" placeholder="Enter username">
+
+      <label for="claim-input" class="visually-hidden visually-hidden-fallback">Claim number</label>
+      <input type="text" id="claim-input" placeholder="Search claim number" autocomplete="off">
+      <button type="button" id="search-button">Search</button>
+
+
+  </form>
+  <br>
+  <table class="table table-striped">
+      <thead style="background-color: rgb(207, 219, 224);">
+          <tr>
+              <th scope="col">ClaimNo</th>
+              <th scope="col">ApprDt.</th>
+              <th scope="col">ApprBy</th>
+              <th scope="col">Associate Name</th>
+              <th scope="col">DT Number</th>
+              <th scope="col">Dept</th>
+              <th scope="col">Manager</th>
+              <th scope="col">Project</th>
+              <th scope="col">Sub-Project</th>
+              <th scope="col">ExpDetails</th>
+              <th scope="col">Amount</th>
+              <th scope="col">ApprAmt</th>
+              <th scope="col">AccSt.</th>
+              <th scope="col">MgmtSt.</th>
+              <th scope="col">PmtSt.</th>
+          </tr>
+      </thead>
+      <tbody>
+        {% for n in parentclaimdata %}
+<tr style="background-color: rgb(239, 244, 247);">
+
+    <td style="text-align: center;">
+        {% if n.claim.ClaimNumber %}
+            <a href="{% url 'entereddata3' n.claim.ClaimNumber %}">
+                {{ n.claim.ClaimNumber }}
+            </a>
+        {% endif %}
+    </td>
+
+    <td>{{ n.claim.StatusDate|date:"M. d, Y" }}</td>
+
+    <td>{{ n.approvedby }}</td>
+
+    <td>{{ n.claim.user.first_name }}</td>
+
+    <td>{{ n.claim.user.last_name }}</td>
+
+    <td>{{ n.claim.Department }}</td>
+
+    <td>{{ n.claim.Manager }}</td>
+
+    <td>{{ n.claim.Project }}</td>
+
+    <td>{{ n.claim.Subproject }}</td>
+
+    <td>{{ n.claim.ExpenseDetails }}</td>
+
+    <td>{{ n.claim.total_claim_amount|default:0 }}</td>
+
+    <td>{{ n.approvedamount|default_if_none:"" }}</td>
+
+    <td>
+        {% if n.accountstatus == 'Approved' %}
+            <span class="text-success">Approved</span>
+        {% elif n.accountstatus == 'Rejected' %}
+            <span class="text-danger">Rejected</span>
+        {% else %}
+            <span class="text-warning">Pending</span>
+        {% endif %}
+    </td>
+
+    <td>
+        {% if n.managementstatus == 'Approved' %}
+            <span style="color:green;">Approved</span>
+        {% elif n.managementstatus == 'Rejected' %}
+            <span style="color:red;">Rejected</span>
+        {% else %}
+            <span>Pending</span>
+        {% endif %}
+    </td>
+
+    <td>
+        {% if n.financestatus == 'PaymentDone' %}
+            <span style="color:green;">PaymentDone</span>
+        {% else %}
+            <span>Pending</span>
+        {% endif %}
+    </td>
+
+</tr>
+
+{% empty %}
+<tr>
+    <td colspan="15" style="text-align: center;">
+        No rejected claims found.
+    </td>
+</tr>
+{% endfor %}
+
+<script>
+// Live filter: Associate Name (col 4) + Claim Number (col 1)
+function performSearch() {
+    var nameQuery  = document.getElementById('username-input').value.trim().toLowerCase();
+    var claimQuery = document.getElementById('claim-input').value.trim().toLowerCase();
+    var tableRows  = document.querySelectorAll('tbody tr');
+
+    tableRows.forEach(function (row) {
+        // Skip the "No rejected claims found" row (it has only one cell)
+        if (row.cells.length === 1) return;
+
+        var rowName  = row.querySelector('td:nth-child(4)').textContent.trim().toLowerCase();
+        var rowClaim = row.querySelector('td:nth-child(1)').textContent.trim().toLowerCase();
+
+        // Name: under 3 letters match the start, 3+ letters match anywhere
+        var nameMatches = nameQuery === '' ||
+            rowName.startsWith(nameQuery) ||
+            (nameQuery.length >= 3 && rowName.includes(nameQuery));
+
+        // Claim number: match anywhere in the number
+        var claimMatches = claimQuery === '' || rowClaim.includes(claimQuery);
+
+        row.style.display = (nameMatches && claimMatches) ? '' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var searchButton  = document.getElementById('search-button');
+    var usernameInput = document.getElementById('username-input');
+    var claimInput    = document.getElementById('claim-input');
+
+    // Filter on every keystroke (also covers paste and clearing the box)
+    usernameInput.addEventListener('input', performSearch);
+    claimInput.addEventListener('input', performSearch);
+
+    // Enter key: just filter, don't submit the form
+    [usernameInput, claimInput].forEach(function (input) {
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                performSearch();
+            }
+        });
+    });
+
+    // Keep the button working as well
+    searchButton.addEventListener('click', performSearch);
+});
+</script>
+
+{% endblock %}

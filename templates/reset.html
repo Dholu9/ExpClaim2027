@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %} 
+<style>
+    .content-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .formwrapper {
+        background-color: #f4f4f4;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 800px;
+    }
+
+    .form {
+        display: flex;
+        flex-direction: column;
+    }
+
+    input[type="submit"] {
+        margin-top: 5px;
+        background-color: #007bff;
+        color: #fff;
+        padding: 5px 10px; /* Adjust the padding here to make it smaller */
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+
+
+
+
+<div class="content-box">
+    <div class="formwrapper">
+        <img src="/static/logo.jpg" class="img-fluid" alt="" width="30%">
+        <h3>Enter New Password</h3>
+
+        <p>Please enter your new password twice so we can verify you typed it in correctly</p>
+        <br>
+
+        <form class="form" method="POST">
+
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input class="btn btn--sub btn--lg my-md" type="submit">
+        </form>
+   
+    </div>
+</div>
+
+{% endblock %}

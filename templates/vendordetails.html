@@ -1,0 +1,507 @@
+{% extends 'base2.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+
+<style>
+    /* Ensure the submit button is aligned with the form fields */
+    .d-flex {
+      display: flex;
+    }
+
+    .align-items-end {
+      align-items: flex-end;
+    }
+
+    .table-container {   
+        max-height: 280px; /* Set the maximum height for the table container */
+        overflow-y: auto; /* Enable vertical scrolling */
+        overflow-x: auto; /* Enable horizontal scrolling if needed */
+        width: 100%; /* Ensure the container spans the full width of the parent */
+        box-sizing: border-box; /* Include padding and border in the element's total width */
+    }
+
+    .container {    
+        max-width: 75%; /* Make the container take up full available width */
+        margin-left: auto; /* Center align the container */
+        margin-right: 100px; /* Center align the container */
+        padding: 0 15px; /* Add padding for better spacing */
+    }
+
+    /* Table styling */
+    .table {
+        width: 100%; /* Ensure the table spans the full width of its container */
+        border-collapse: collapse; /* Collapse borders to avoid extra spacing */
+    }
+
+    /* Table header styling */
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: white; /* Background color for header */
+        z-index: 1; /* Ensure the header stays on top of the table content */
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4); /* Optional shadow */
+    }
+
+    /* Table cell styling */
+    .table tbody td {
+        border: 1px solid #dee2e6; /* Border for table cells */
+        padding: 8px; /* Padding for readability */
+    }
+
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    @media (max-width: 1260px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+   
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+
+/* Small Laptops and Tablets (Max 1024px) */
+@media (max-width: 1024px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 6px;
+    padding: 8px;
+  }
+  .btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+
+  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Larger Mobile Screens (Max 768px) */
+@media (max-width: 768px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+ 
+/* Small Mobile Screens (Max 480px) */
+@media (max-width: 480px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 6px;
+    padding: 8px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  }  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Extra Small Screens (Max 320px) */
+@media (max-width: 320px) {
+  .form-control,
+  .form-select,
+  button {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 6px;
+  } 
+  .btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+  
+</style>
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Project Registration Form -->
+        <div class="col-md-10 mb-5 offset-1">
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="font-size: large; color: blueviolet; font-weight: bold;">Register a New Vendor</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'vendorrecord' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Vendor Information Fields -->
+                        <div class="form-row">
+                            <div class="form-group col-md-6">                          
+                                <input type="text" class="form-control" name="VendorName" placeholder="Vendor Name*" required>
+                            </div>
+                            <div class="form-group col-md-6">                           
+                                <input type="text" class="form-control" name="VendorEmail" placeholder="Vendor Email*" required>
+                            </div>
+                            <div class="form-group col-md-4">                          
+                                <input type="text" class="form-control" name="VendorGST" placeholder="Vendor GST*" maxlength="15">
+                            </div>
+                            <div class="form-group col-md-4">                       
+                            <input type="text" class="form-control" name="PanNumber" placeholder="PanNumber*" maxlength="10">
+                            </div>
+                            <div class="form-group col-md-4">
+                              
+                                <input type="number" class="form-control" name="MobileNumber" id="MobileNumber" placeholder="Mobile Number*" max="9999999999" required>
+                            </div>
+                            
+                            <script>
+                              document.getElementById('MobileNumber').addEventListener('input', function() {
+                                var mobileNumber = this.value.replace(/\D/g, '');  // Remove non-numeric characters
+                                if (mobileNumber.length > 10) {
+                                  mobileNumber = mobileNumber.slice(0, 10);  // Truncate to 10 digits
+                                }
+                                this.value = mobileNumber;  // Update input field with 10 digits
+                              });
+                            </script>
+                        </div>
+                  
+                        <div class="form-row">
+                            <div class="form-group col-md-4">                         
+                                <input type="text" class="form-control" name="PlotNumber" placeholder="Address*">
+                            </div>
+                            <div class="form-group col-md-4">                        
+                                <input type="text" class="form-control" name="StreetName" placeholder="Street Name*">
+                            </div>
+                            <div class="form-group col-md-4">                          
+                                <input type="text" class="form-control" name="Locality" placeholder="Locality*" required>
+                            </div>
+                        </div>
+
+                        <!-- City, State and Pincode Fields -->
+                        <div class="form-row">
+                            <div class="form-group col-md-6">                   
+                                <input type="text" class="form-control" name="City" placeholder="City*" required>
+                            </div>
+                            <div class="form-group col-md-4">                         
+                            
+                                <input type="text" class="form-control" name="State" placeholder="State*" required>
+                            </div>
+                            <div class="form-group col-md-2">                   
+                                <input type="number" class="form-control" name="Pincode" placeholder="Pincode*">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">                   
+                                <input type="text" class="form-control" name="BankName" placeholder="Bank Name*" required>
+                            </div>
+                            <div class="form-group col-md-4">                    
+                                <input type="text" class="form-control" name="AccountNumber" placeholder="Account Number*" required>
+                            </div>
+                            <div class="form-group col-md-4">                           
+                                <input type="text" class="form-control" name="IFSCCode" placeholder="IFSC Code*" required maxlength="20">
+                            </div>
+                        </div>
+
+                        <!-- GST Copy Section -->
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="GSTFILE" class="form-label">GST</label>
+                                <select id="GSTFILE" name="GSTFILE" class="form-control" required>
+                                    <option value="" disabled selected>Select an option</option>
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-2" id="GSTCopy" style="display: none;">  
+                                <label for="GSTCopy" class="form-label">GST Copy*</label>
+                                <input class="form-control" type="file" name="GSTCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+                  
+
+                   
+                            <div class="form-group col-md-4">
+                                <label for="MSMEFILE" class="form-label">MSME</label>
+                                <select id="MSMEFILE" name="MSMEFILE" class="form-control" required>
+                                    <option value="" disabled selected>Select an option</option>
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-2" id="MSMECopy" style="display: none;">  
+                                <label for="MSMECopy" class="form-label">MSME Copy*</label>
+                                <input class="form-control" type="file" name="MSMECopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+
+                            <div class="form-group col-md-4">
+                                <label for="ContractFILE" class="form-label">Vendor Contract(Signed with NDA)</label>
+                                <select id="ContractFILE" name="ContractFILE" class="form-control" required>
+                                    <option value="" disabled selected>Select an option</option>
+                                    <option value="no">No</option>
+                                    <option value="yes">Yes</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-md-4" id="ContractCopy" style="display: none;">  
+                                <label for="ContractCopy" class="form-label">Contract Copy</label>
+                                <input class="form-control" type="file" name="ContractCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+                  
+
+                            
+                    
+                            <div class="form-group col-md-4">                                  
+                                <label for="CancelledCheque" class="form-label">Cancelled Cheque</label>
+                                <input class="form-control" type="file" name="CancelledCheque" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+
+                            <div class="form-group col-md-4">                                  
+                                <label for="PANCopy" class="form-label">PAN Attachment</label>
+                                <input class="form-control" type="file" name="PANCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+
+                            <div class="form-group col-md-4">                                  
+                                <label for="EmailCopy" class="form-label">Email Attachment</label>
+                                <input class="form-control" type="file" name="EmailCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="form-label">Accepted file formats: PDF, JPEG, JPG, PNG</p>
+                            </div>
+                    
+                      
+                        </div>
+
+                        <div class="offset-md-11">
+                            <button type="submit" class="btn btn-info">Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+      
+        <!-- Vendor Records Section -->
+        <div class="col-md-10 offset-1">
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="font-size: large; color: blueviolet; font-weight: bold;">Vendor Records</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table table-bordered table-striped">
+                          
+                            <tbody>
+                                {% if data %}
+                                    {% for vendor in data %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'showvendordetails' vendor.VendorId %}">{{ vendor.VendorId }}</a>
+                                            </td>
+                                            <td>{{ vendor.VendorName }}</td>
+                                          
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="11">No vendors found.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const maxFileSize = 2 * 1024 * 1024; // 2MB
+
+    function validateFileInput(input) {
+        const file = input.files[0];
+        if (file) {
+            const fileSize = file.size;
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/tiff'];
+
+            // Check file size
+            if (fileSize > maxFileSize) {
+                alert('File size exceeds 2MB');
+                input.value = ''; // Clear the input
+                return false;
+            }
+
+            // Check file type
+            if (!allowedTypes.includes(file.type)) {
+                alert('Invalid file type');
+                input.value = ''; // Clear the input
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // File input elements
+    const gstCopyInput = document.querySelector('input[name="GSTCopy"]');
+    const msmeCopyInput = document.querySelector('input[name="MSMECopy"]');
+    const contractCopyInput = document.querySelector('input[name="ContractCopy"]');
+
+    
+
+    // Validate file inputs on change
+    gstCopyInput.addEventListener('change', function () {
+        validateFileInput(this);
+    });
+
+    msmeCopyInput.addEventListener('change', function () {
+        validateFileInput(this);
+    });
+
+    // Select elements
+    var applyGSTSelect = document.getElementById('GSTFILE');
+    var gstContainer = document.getElementById('GSTCopy');
+
+    var applyMSMESelect = document.getElementById('MSMEFILE');
+    var msmeContainer = document.getElementById('MSMECopy');
+
+    var applycontractSelect = document.getElementById('ContractFILE');
+    var contractContainer = document.getElementById('ContractCopy');
+
+    function toggleGSTFields() {
+        if (applyGSTSelect.value === 'yes') {
+            gstContainer.style.display = 'block';
+        } else {
+            gstContainer.style.display = 'none';
+            gstCopyInput.value = ''; // Clear file input
+        }
+    }
+
+    function toggleMSMEFields() {
+        if (applyMSMESelect.value === 'yes') {
+            msmeContainer.style.display = 'block';
+        } else {
+            msmeContainer.style.display = 'none';
+            msmeCopyInput.value = ''; // Clear file input
+        }
+    }
+
+    function togglecontractFields() {
+        if (applycontractSelect.value === 'yes') {
+            contractContainer.style.display = 'block';
+        } else {
+            contractContainer.style.display = 'none';
+            contractCopyInput.value = ''; // Clear file input
+        }
+    }
+
+    // Call toggle functions on page load
+    toggleGSTFields();
+    toggleMSMEFields();
+    togglecontractFields();
+
+    // Add event listeners to the select elements
+    applyGSTSelect.addEventListener('change', toggleGSTFields);
+    applyMSMESelect.addEventListener('change', toggleMSMEFields);
+    applycontractSelect.addEventListener('change', togglecontractFields);
+
+    // Form submission validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function (e) {
+        let isValid = true;
+
+        if (applyGSTSelect.value === 'yes' && !gstCopyInput.files.length) {
+            alert('GST Copy is mandatory when "Yes" is selected.');
+            isValid = false;
+        }
+
+        if (applyMSMESelect.value === 'yes' && !msmeCopyInput.files.length) {
+            alert('MSME Copy is mandatory when "Yes" is selected.');
+            isValid = false;
+        }
+
+        if (applycontractSelect.value === 'yes' && !contractCopyInput.files.length) {
+            alert('Contract Copy is mandatory when "Yes" is selected.');
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault(); // Prevent form submission
+        }
+    });
+});
+
+
+</script>
+
+{% endblock %}

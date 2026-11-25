@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+
+<style>
+  /* ===== Claims table: wide columns, horizontal scroll at the end of the table ===== */
+  .table-container {
+    width: 100%;
+    height: 750px;               /* <-- change this value to make the table taller or shorter */
+    overflow-x: auto;
+    overflow-y: auto;
+    margin: 0;
+    box-sizing: border-box;
+    border: 1px solid #cfd8e3;
+  }
+
+  .claims-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  .claims-table td,
+  .claims-table th {
+    min-width: 150px;
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .claims-table td {
+    color: rgb(74, 75, 71);
+    border-right: 2px solid #380a0a;
+  }
+
+  .claims-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: rgb(207, 219, 224);
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+  }
+
+  /* Column widths */
+  .claims-table th:nth-child(10), .claims-table td:nth-child(10) { min-width: 280px; } /* ExpDetails */
+  .claims-table th:nth-child(3),  .claims-table td:nth-child(3)  { min-width: 170px; } /* ApprovedBy */
+  .claims-table th:nth-child(11), .claims-table td:nth-child(11),
+  .claims-table th:nth-child(12), .claims-table td:nth-child(12),
+  .claims-table th:nth-child(13), .claims-table td:nth-child(13),
+  .claims-table th:nth-child(20), .claims-table td:nth-child(20),
+  .claims-table th:nth-child(21), .claims-table td:nth-child(21),
+  .claims-table th:nth-child(25), .claims-table td:nth-child(25) { min-width: 170px; } /* amount columns */
+
+  /* Remarks columns: small and fixed (HRRemarks = 15, FinanceRemarks = 24) */
+  .claims-table th:nth-child(15), .claims-table td:nth-child(15),
+  .claims-table th:nth-child(24), .claims-table td:nth-child(24) {
+    min-width: 170px;
+    max-width: 170px;
+  }
+
+  .remarks-text {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #6699cc;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    font-style: italic;
+    font-family: Georgia, serif;
+    cursor: help;
+    vertical-align: middle;
+    user-select: none;
+  }
+  .info-icon:hover { background: #3a5a7a; }
+
+  /* Floating tooltip (appended to <body> by the script, so table cells never clip it) */
+  #remarks-tooltip {
+    position: fixed;
+    z-index: 3000;
+    max-width: 320px;
+    padding: 10px 12px;
+    background: #2c3e50;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .claims-table td, .claims-table th { font-size: 12px; padding: 10px; }
+  }
+
+  /* ===== Buttons ===== */
+  .btn {
+    color: #4b6e92;
+    background: linear-gradient(135deg, #a3cef1, #6699cc);
+    border: none;
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(75, 110, 146, 0.3);
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn:hover, .btn:focus {
+    background: linear-gradient(135deg, #6699cc, #3a5a7a);
+    color: #e0ebff;
+    box-shadow: 0 6px 10px rgba(75, 110, 146, 0.6);
+    transform: scale(1.05);
+  }
+
+  .btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 3px 6px rgba(75, 110, 146, 0.8);
+  }
+
+  /* ===== Top bar: search + count + download ===== */
+  .top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    background: #f9f9f9;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .top-bar input[type="text"] {
+    padding: 8px 12px;
+    border: 1px solid #a5c9ea;
+    border-radius: 8px;
+    font-size: 14px;
+    min-width: 200px;
+    background-color: #eaf6ff;
+  }
+  .pending-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: #fff4e0;
+    border: 1px solid #f2c879;
+    color: #7a4b00;
+    font-weight: 600;
+  }
+  .pending-count .num-badge {
+    background: #f2a900;
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 14px;
+  }
+  .showing-count { color: #5a6b7b; font-size: 13px; }
+  .top-bar .spacer { flex: 1; }
+
+  #go-back-button {
+    position: fixed;
+    bottom: 10px;
+    right: 20px;
+    z-index: 1;
+  }
+</style>
+
+<div class="col-12 col-md-10 offset-md-2">
+
+  <div class="top-bar">
+    <input type="text" id="name-search" placeholder="Search by name" autocomplete="off">
+    <input type="text" id="claim-search" placeholder="Search by claim number" autocomplete="off">
+
+    <span class="pending-count">
+      Total Pending Claims
+      <span class="num-badge">{{ monthdata|length }}</span>
+    </span>
+    <span class="showing-count">Showing <span id="visible-count">{{ monthdata|length }}</span></span>
+
+    <span class="spacer"></span>
+    <button type="button" onclick="downloadExcel()" class="btn">Download Excel</button>
+  </div>
+
+  <div class="table-container">
+    <table class="table table-striped claims-table">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNo</th>
+          <th scope="col">ApprovedDt.</th>
+          <th scope="col">ApprovedBy</th>
+          <th scope="col">UserName</th>
+          <th scope="col">DTNo</th>
+          <th scope="col">Project</th>
+          <th scope="col">Sub-Project</th>
+          <th scope="col">Dept</th>
+          <th scope="col">Manager</th>
+          <th scope="col">ExpDetails</th>
+          <th scope="col">TotalClaimAmt</th>
+          <th scope="col">HoldAmountHR</th>
+          <th scope="col">RejectedAmountHR</th>
+          <th scope="col">AdvanceDeduct</th>
+          <th scope="col">HRRemarks</th>
+          <th scope="col">HRStatus</th>
+          <th scope="col">Appr.Amt</th>
+          <th scope="col">NatureOfExpense</th>
+          <th scope="col">AccountingLocation</th>
+          <th scope="col">WorkingLocation</th>
+          <th scope="col">HoldAmountFinance</th>
+          <th scope="col">HoldReleaseAmt</th>
+          <th scope="col">RejectedAmt</th>
+          <th scope="col">FinanceRemarks</th>
+          <th scope="col">FinanceStatus</th>
+          <th scope="col">PayableAmt</th>
+          <th scope="col">Paid</th>
+          <th scope="col">PaidDate</th>
+        </tr>
+      </thead>
+
+      <tbody id="claims-body">
+        {% for n in monthdata %}
+        {% with n.claimstatus_set.first as status %}
+        {% with n.child_models.first as child %}
+
+          {# One row per claim. All finance values come from ClaimStatus. #}
+          <tr class="claim-row" style="background-color:rgb(239, 244, 247);">
+            <td><a href="{% url 'entereddata3' n.ClaimNumber %}">{{ n.ClaimNumber }}</a></td>
+            <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+            <td>{{ status.approvedby|default_if_none:"" }}</td>
+            <td>{{ n.user.first_name }}</td>
+            <td>{{ n.DTNumber }}</td>
+            <td>{{ n.Project }}</td>
+            <td>{{ n.Subproject }}</td>
+            <td>{{ n.Department }}</td>
+            <td>{{ n.Manager }}</td>
+            <td>{{ n.ExpenseDetails }}</td>
+            <td class="num">{{ child.TotalClaimAmount|default:0 }}</td>
+            <td class="num">{{ status.holdamounthr|default:0 }}</td>
+            <td class="num">{{ status.rejectamounthr|default:0 }}</td>
+            <td class="num">{{ status.advancededuct|default:0 }}</td>
+            <td>
+              {% if status.accountscomments %}<span class="info-icon" data-full="{{ status.accountscomments }}">i</span>{% endif %}
+              <span class="remarks-text">{{ status.accountscomments|default_if_none:"" }}</span>
+            </td>
+            <td>
+              {% if status.accountstatus == 'Approved' %}
+                <span class="st-approved">Reviewed</span>
+              {% else %}
+                <span class="st-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ status.approvedamount|default:0 }}</td>
+            <td>{{ status.NatureOfExpense|default_if_none:"" }}</td>
+            <td>{{ status.AccountingLocation|default_if_none:"" }}</td>
+            <td>{{ status.WorkingLocation|default_if_none:"" }}</td>
+            <td class="num">{{ status.holdamountfin|default:0 }}</td>
+            <td class="num">{{ status.releasehold|default:0 }}</td>
+            <td class="num">{{ status.rejectamountfin|default:0 }}</td>
+            <td>
+              {% if status.financecomments %}<span class="info-icon" data-full="{{ status.financecomments }}">i</span>{% endif %}
+              <span class="remarks-text">{{ status.financecomments|default_if_none:"" }}</span>
+            </td>
+            <td>
+              {% if status.financestatus == 'Approved' %}
+                <span class="st-approved">Approved</span>
+              {% elif status.financestatus == 'Rejected' %}
+                <span class="st-rejected">Rejected</span>
+              {% elif status.financestatus == 'Hold' %}
+                <span class="st-hold">Hold</span>
+              {% else %}
+                <span class="st-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ status.payableamount|default:0 }}</td>
+            <td class="num">{{ status.paid|default:0 }}</td>
+            <td>{{ status.paidon|date:"M. d, Y" }}</td>
+          </tr>
+
+        {% endwith %}
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="28" class="text-center">No pending claims found.</td>
+        </tr>
+        {% endfor %}
+
+        {# Shown by the script when the typed search matches nothing #}
+        <tr id="no-match-row" style="display:none;">
+          <td colspan="28" class="text-center">No claims match your search.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+<script>
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+function goBack() {
+  window.history.back();
+}
+
+/* Download Excel: sends the typed name (if any) so the file matches the search by name. */
+function downloadExcel() {
+  var params = new URLSearchParams();
+  var nameEl = document.getElementById('name-search');
+  var name = nameEl ? (nameEl.value || '').trim() : '';
+  if (name) params.append('user_name', name);
+
+  var url = "{% url 'download_excel_latesthr' %}";
+  var qs = params.toString();
+  window.location.href = qs ? (url + '?' + qs) : url;
+}
+
+/* =========================================================================
+   LIVE SEARCH: filters the table rows as you type (name + claim number)
+   ========================================================================= */
+function initLiveSearch() {
+  var nameInput  = document.getElementById('name-search');
+  var claimInput = document.getElementById('claim-search');
+  var counter    = document.getElementById('visible-count');
+  var noMatchRow = document.getElementById('no-match-row');
+  if (!nameInput || !claimInput) return;
+
+  function applyFilters() {
+    var nameQ  = (nameInput.value  || '').trim().toLowerCase();
+    var claimQ = (claimInput.value || '').trim().toLowerCase();
+    var rows   = document.querySelectorAll('#claims-body tr.claim-row');
+    var shown  = 0;
+
+    rows.forEach(function (row) {
+      var claimNo  = (row.cells[0].textContent || '').trim().toLowerCase();   // col 1: ClaimNo
+      var userName = (row.cells[3].textContent || '').trim().toLowerCase();   // col 4: UserName
+
+      var ok = (!nameQ  || userName.indexOf(nameQ)  !== -1) &&
+               (!claimQ || claimNo.indexOf(claimQ)  !== -1);
+
+      row.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+
+    if (counter) counter.textContent = shown;
+    if (noMatchRow) noMatchRow.style.display = (rows.length && !shown) ? '' : 'none';
+  }
+
+  nameInput.addEventListener('input', applyFilters);
+  claimInput.addEventListener('input', applyFilters);
+  applyFilters();
+}
+
+/* =========================================================================
+   REMARKS INFO ICON: full text on hover (click also works on touch screens)
+   ========================================================================= */
+function initRemarksTooltip() {
+  var tip = document.createElement('div');
+  tip.id = 'remarks-tooltip';
+  document.body.appendChild(tip);
+
+  function showTip(icon) {
+    tip.textContent = icon.getAttribute('data-full') || '';
+    tip.style.display = 'block';
+    var r = icon.getBoundingClientRect();
+    var left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 10);
+    var top  = r.bottom + 6;
+    if (top + tip.offsetHeight > window.innerHeight) top = r.top - tip.offsetHeight - 6;
+    tip.style.left = Math.max(10, left) + 'px';
+    tip.style.top  = Math.max(10, top) + 'px';
+  }
+  function hideTip() { tip.style.display = 'none'; }
+
+  document.addEventListener('mouseover', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) showTip(e.target);
+  });
+  document.addEventListener('mouseout', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) hideTip();
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) showTip(e.target);
+    else hideTip();
+  });
+  window.addEventListener('scroll', hideTip, true);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  initLiveSearch();
+  initRemarksTooltip();
+});
+</script>
+
+{% endblock %}

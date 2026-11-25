@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editable Purchase Order</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #191b1d;
+            page-break-after: always;
+        }
+        h1, h3, h4 {
+            text-align: center;
+            color: rgb(51, 107, 170);
+            margin: 0;
+        }
+        h1 { font-size: 1.3em; }
+        h3 { font-size: 1.1em; }
+        h4 { font-size: 1em; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .column {
+            width: 48%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 4px;
+            text-align: left;
+            font-size: 0.6em;
+        }
+        th {
+            background-color: #f1f1f1;
+            font-weight: bold;
+            font-size: 0.6em;
+        }
+        .terms {
+            margin-top: 20px;
+          
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: purple;
+            font-size: 0.7em;
+            padding: 10px 0;
+            border-top: 1px solid #dee2e6;
+        }
+        .footer p {
+            margin: 0;
+        }
+        .column p {
+            margin: 0;
+            font-size: 0.8em;
+        }
+        .bordered-box {
+            border: 1px solid black;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.8em;
+        }
+        /* Print styles */
+        @media print {
+
+            
+    body {
+        margin: 0;
+        padding: 0;
+        font-size: 10px;  /* Adjust font size */
+    }
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        flex-direction: column;
+        box-shadow: none;
+        margin: 0;
+        page-break-inside: avoid; /* Prevent content from breaking */
+    }
+    .header, .footer {
+        margin: 0;
+        page-break-before: always; /* Ensure header and footer are on a new page */
+    }
+    .content {
+        margin: 0;
+        width: 100%;
+        page-break-inside: avoid; /* Avoid breaking inside content */
+    }
+    .row, .column {
+        page-break-inside: avoid; /* Prevent row/column breaks */
+    }
+    @page {
+        size: A4;
+        margin: 5mm;  /* Adjust page margins */
+    }
+
+    textarea {
+        display: none;  /* Hide the textarea */
+    }
+
+   
+}        
+        #download-button {
+            background-color: #007bff;
+        }
+        #move-to-dashboard {
+            background-color: #28a745;
+        }
+        input {
+            border: #dee2e6;
+    
+}
+
+    </style>
+</head>
+<body>
+
+    <!-- Generate PDF Button -->
+    <button id="download-button" 
+            style="font-size: 16px; padding: 20px 20px; background-color: #7091b4; 
+                    color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Generate PDF
+    </button>
+
+    <div class="container">
+        <div class="header">
+            <h1>Bellissimo Ventures Private Limited</h1>
+            <h3>(Deduce Technologies<sup style="font-size: small;">®</sup>)</h3>
+            <h4>PURCHASE ORDER</h4>
+        </div>
+
+        <div class="row">
+            <!-- Editable Address section -->
+            <div class="column bordered-box">
+                <p>Address:</p>
+                <p style="font-size: 15px;">
+                    {% if "BNG" in parentpodata.PONumber %}
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>Brigade Software Park (BSP), 6th Floor, 27th Cross Road,</p>
+                        <p>BSK II Stage, Banashankari,</p>
+                        <p>Bengaluru, Karnataka 560070,</p>
+                        <p>GST Number: 29AAHCB5498H1Z4,</p>
+                        <p>PAN: AAHCB5498H</p>
+                    {% elif "GGN" in parentpodata.PONumber %}
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>D-1103, The Light House, Town Square,</p>
+                        <p>Sector- 82, Vatika India Next,</p>
+                        <p>Gurugram, Haryana- 122004</p>
+                        <p>GST Number: 06AAHCB5498H1ZC,</p>
+                    {% elif "SLM" in parentpodata.PONumber %}  
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>ELCO-SEZ IT Park ,P424+76G Dalmiya colony,</p>
+                        <p>Jagir Ammapalayam, Vellakalpatti,</p>
+                        <p>Salem, Tamil Nadu 636012</p>
+                        <p>PAN: AAHCB5498H</p>
+                        <p>GST Number: 33AAHCB5498H1ZF</p>
+                    {% elif "KMN" in PONumber %}  
+                        <p>Bellissimo Ventures Private Limited (Deduce Technologies®),</p>
+                        <p>4th Floor, IT Tower,</p>
+                        <p>Street Road, Sircilla Bypass Road,</p>
+                        <p>Karimnagar , Telangana - 505001</p>               
+                        <p>GST Number: 36AAHCB5498H1Z9</p>
+                    {% else %}
+                        <p>{{ parentpodata.PONumber }} <!-- Fallback to the default address --></p>
+                    {% endif %}
+                </p>
+            </div>            
+            <div class="column bordered-box">
+                <p>Ship To:</p>
+            <p style="font-size: 13px;"> {{ ShipTo }}</p>
+            </div>
+            <div class="column bordered-box">
+                <p>Vendor:</p>
+                <p><strong>Name:</strong> {{ vendor.VendorName }}</p>
+                <p><strong>Email:</strong> {{ vendor.VendorEmail }}</p>
+                <p><strong>GST:</strong> {{ vendor.VendorGST }}</p>
+                <p><strong>Bank Name:</strong> {{ vendor.BankName }}</p>
+                <p><strong>Account Number:</strong> {{ vendor.AccountNumber }}</p>
+                <p><strong>IFSC Code:</strong> {{ vendor.IFSCCode }}</p>
+                <p><strong>Mobile:</strong> {{ vendor.MobileNumber }}</p>
+                <p><strong>Address:</strong> {{ vendor.PlotNumber }}, {{ vendor.StreetName }}, {{ vendor.Locality }}, {{ vendor.City }} - {{ vendor.Pincode }}, {{ vendor.State }}</p>
+            </div>
+        </div>
+        <form action="{% url 'update_polast' parentpodata.PONumber %}" method="POST">
+            {% csrf_token %}
+            <table>
+                <tr>
+                    <th>PO Reference</th>
+                    <td><input type="text" name="POReference" value="{{ parentpodata.POReference }}" style="width: 100%;"></td>
+                </tr>
+                <tr>
+                    <th>PO Number</th>
+                    <td><input type="text" name="PONumber" value="{{ parentpodata.PONumber }}" style="width: 100%;" readonly></td>
+                </tr>
+                <tr>
+                    <th>Vendor Reference</th>
+                    <td><input type="text" name="VendorReference" value="{{ parentpodata.VendorReference }}" style="width: 100%;"></td>
+                </tr>
+                <tr>
+                    <th>Date</th>
+                    <td><input type="text" name="PODate" value="{{ parentpodata.PODate }}" style="width: 100%;"></td>                    
+                </tr>
+            </table>            
+
+        <table id="purchase-order-table">
+            <thead>
+                <tr>
+                    <th>SN.</th>
+                    <th>Description</th>
+                    <th>HSN/SAC Code</th>
+                    <th>Quantity</th>            
+                    <th>Unit Rate</th>
+                    <th>Basic Value (INR)</th>
+                    <th>GST Rate (%)</th>                           
+                    <th>GST Amount (INR)</th>                          
+                    <th>Total Order Value (INR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for child in childpodata %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td data-description="{{ child.Description }}">
+                        <textarea 
+                            id="description_{{ child.id }}" 
+                            class="description-textT"
+                            name="description_{{ child.id }}" 
+                            style="width: 100px; height: auto; resize: none; white-space: pre-wrap; word-wrap: break-word; font-size: smaller; font-weight: bold;" 
+                            wrap="soft"
+                            oninput="adjustTextareaSize(this)"
+                        >{{ child.Description }}</textarea>
+                        <span class="description-text" style="display: none;">{{ child.Description }}</span> <!-- Hidden span with the description text -->
+                    </td>
+                    
+                    <td>                
+                        <input type="text" name="hsn_code_{{ child.id }}" value="{{ child.HSNCode }}" style="width: 80px; font-size: small; font-weight: bold;">
+                    </td>
+                    <td>     
+                        <input type="text" name="quantity_{{ child.id }}" value="{{ child.Quantity }}" style="width: 80px; font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                    <td>           
+                        <input type="text" name="unit_rate_{{ child.id }}" value="{{ child.Rate }}" style="width: 80px;font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                    <td>                       
+                        <input type="text" name="basic_value_{{ child.id }}" value="{{ child.Amount }}" style="width: 80px;font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                    <td>                     
+                        <input type="text" name="gst_rate_{{ child.id }}" value="{{ child.GSTPercentage }}" style="width: 50px;font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                    <td>                  
+                        <input type="text" name="gst_amount_{{ child.id }}" value="{{ child.GSTAmount }}" style="width: 80px;font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                    <td>                     
+                        <input type="text" name="total_amount_{{ child.id }}" value="{{ child.TotalAmount }}" style="width: 100px;font-size: small; font-weight: bold;" oninput="calculateRow({{ child.id }})">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>         
+
+        <div class="total-amounts" style="margin-top: 20px;">
+            <table>
+                <tr>
+                    <th style="width: 30%;">Order Value (INR)</th>
+                    <td>
+                        <input style="width: 100%; text-align: right;" type="text" name="totalAmountSum" id="totalAmountSum" value="{{ totalAmountSum }}">
+                    </td>
+                </tr>
+                <tr>
+                    <th>Total GST Value (INR)</th>
+                    <td>
+                        <input type="text" style="width: 100%; text-align: right;" name="totalGSTValue" id="totalGSTValue" value="{{ total_gst_sum }}">
+                    </td>
+                </tr>
+                <tr>
+                    <th style="width: 30%;">Total Order Value (Inclusive GST) (INR)</th>
+                    <td>
+                        <input type="text" style="width: 100%; text-align: right;" name="totalAmount" id="totalAmount" value="{{ totalAmountTotal }}">
+                    </td>
+                </tr>
+                <tr>
+                    <th>Total Order Value (In Words)</th>
+                    <td>
+                        <input type="text" style="width: 100%; text-align: right;" name="totalValueWords" id="totalValueWords" value="{{ totalAmountTotalWords }}">
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        
+           
+        <div class="terms" id="terms-section">
+            <p style="font-weight: bolder;">TERMS / SPECIAL INSTRUCTIONS:</p>
+          
+            <textarea id="terms-textarea" name="Terms" style="width: 100%; height: 100px; text-align: left; white-space: pre-wrap;">{{ parentpodata.Terms }}</textarea>
+            <div id="terms-preview" style="display: none; border: 1px solid #ccc; padding: 10px; white-space: pre-wrap; font-size: 0.6em;">
+                <!-- This div will display terms as plain text for the PDF -->
+            </div>
+            <p>Note: Please quote PO number in all invoices.</p>
+        </div>                
+        
+        <button type="submit" id="save" style="font-size: 14px; padding: 10px 10px; background-color: #563691; 
+                       color: white; border: none; border-radius: 5px; cursor: pointer;">Save PO</button>
+        </form>
+
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; font-size: 0.7em;">
+            <div style="text-align: center; width: 20%;">
+                <p>Approved By</p>
+            </div>
+            <br>
+            <p style="margin: 0;">(MAHIMA SHRIVASTAVA)</p>
+            <p style="margin: 0;">Authorized Signatory</p>
+        </div>
+        <p style="text-align: center; font-size: small;">This a system generated PO. Signature not required.</p>
+
+        <div class="footer" id="footer"> 
+            <p>DO THINGS DIFFERENTLY</p>
+            <p>Registered Office: Unit No. RET-004, Tower D, 11-1103 The Light House, Gurugram, Haryana-122012, INDIA</p>
+            <p>Tel No: +91 7899 75 65 65; CIN No: U74999HR2017PTC071715; URL: www.deducetech.com</p>         
+        </div>
+    </div>
+
+    <!-- Move to Dashboard Button -->
+    <form action="{% url 'poreport' %}" method="get">
+        <button type="submit" id="move-to-dashboard" 
+                style="font-size: 16px; padding: 20px 20px; background-color: #bbc55f; 
+                       color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Move To Dashboard
+        </button>
+    </form>
+ 
+
+    <!-- JavaScript for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+       function adjustTextareaSize(textarea) {
+        textarea.style.height = 'auto'; // Reset height to calculate new height
+        textarea.style.height = textarea.scrollHeight + 'px'; // Set height to fit content
+    }
+
+    // Initialize all textareas on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const textareas = document.querySelectorAll('textarea');
+        textareas.forEach(textarea => adjustTextareaSize(textarea));
+    });
+        let pdfGenerated = false; // Flag to check if PDF has been generated
+    
+        // Event listener for the "Generate PDF" button
+        document.getElementById('download-button').addEventListener('click', async function(event) {
+            // Prevent immediate redirection or default behavior (like form submission)
+            event.preventDefault();
+    
+            // If the PO has not been saved (pdfGenerated is false), show confirmation dialog
+            if (!pdfGenerated) {
+                const userConfirmed = confirm("Have you clicked 'Save PO' before generating the PDF?");
+                
+                if (userConfirmed) {
+                    // Proceed to generate the PDF if user confirms
+                    await generatePDF();
+                } else {
+                    // If user clicks "No", show a reminder and stop the process
+                    alert("Please save the PO before generating the PDF.");
+                }
+            } else {
+                // If PO is already saved (pdfGenerated is true), directly generate the PDF
+                await generatePDF();
+            }
+        });
+    
+        async function generatePDF() {
+    const saveButton = document.getElementById('save');
+    saveButton.style.display = 'none';  // Hide the save button during PDF generation
+
+    const itemTable = document.getElementById('purchase-order-table');
+    const rows = itemTable.querySelectorAll('tbody tr'); // Get rows
+    const termsSection = document.getElementById('terms-section');
+    const element = document.querySelector('.container'); // The container to be converted to PDF
+
+    rows.forEach(row => {
+    const td = row.querySelector('td[data-description]'); // Target the td with 'data-description' attribute
+
+    if (td) {
+        const textarea = td.querySelector('.description-textT');
+        const span = td.querySelector('.description-text');
+
+        // If textarea exists, hide it and create a new div to show the description for the PDF
+      
+            // Hide the textarea
+        textarea.style.display = 'none';
+
+        // Create a div to replace the textarea content
+        const descDiv = document.createElement('div');
+
+        // Copy styles and dimensions from the textarea
+        descDiv.style.width = textarea.style.width;
+        descDiv.style.height = textarea.style.height;
+        descDiv.style.resize = 'none';
+        descDiv.style.overflow = 'hidden'; // Hide overflow for fixed size
+        descDiv.style.border = '1px solid #ccc'; // Optional: match textarea's border
+        descDiv.style.padding = '5px'; // Optional: match textarea's padding
+        descDiv.style.whiteSpace = 'pre-wrap';
+        descDiv.style.wordWrap = 'break-word';
+
+      
+
+        // If the span with class 'description-text' exists, ensure it is not visible for PDF generation
+        if (span) {
+            span.style.display = 'block'; // Hide span text
+        }
+    }
+});
+
+
+
+    // Hide the textarea and show the preview div only for PDF generation
+    const termsTextarea = document.getElementById('terms-textarea');
+    const termsPreview = document.getElementById('terms-preview');
+    
+    // Get the value from the textarea and set it in the preview div
+    const termsContent = termsTextarea.value;
+    termsPreview.innerHTML = termsContent.replace(/\n/g, '<br/>'); // Ensure line breaks are respected
+
+    // Hide the textarea and show the preview div for PDF content
+    termsTextarea.style.display = 'none';
+    termsPreview.style.display = 'block';  // Make the preview visible for PDF
+
+    // Adjust font size based on the number of rows
+    if (rows.length > 3) {
+        itemTable.style.fontSize = '1.2em';
+        termsSection.classList.add('page-break'); // Add page-break class for large content
+    }
+
+    const termsInputs = termsSection.querySelectorAll('input[name="Terms"]');
+    const termsParagraphs = termsSection.querySelectorAll('p');
+    const termsLines = termsInputs.length; // Count input fields (lines)
+
+    // Adjust font size based on the number of lines in terms section
+    if (termsLines < 15) {
+        termsInputs.forEach(input => input.style.fontSize = '0.7em');
+        termsParagraphs.forEach(p => p.style.fontSize = '0.6em');
+    } else if (termsLines > 15) {
+        termsInputs.forEach(input => input.style.fontSize = '0.7em');
+        termsParagraphs.forEach(p => p.style.fontSize = '0.6em');
+    }
+
+  // Custom A4 page size (20% increase in width)
+  const customWidth = 210 * 1.2; // Increased width (A4 width with a small scaling)
+  const customHeight = 297;  
+
+// Generate the PDF with updated content
+await html2pdf()
+    .from(element)
+    .set({
+        margin: [2, 10, 10, 10],  // Apply small margins to avoid clipping
+        filename: 'purchase_order.pdf',
+        image: { 
+            type: 'jpeg', 
+            quality: 1 
+        },
+        html2canvas: {
+            scale: 4,  // High-quality rendering
+            logging: true,
+        },
+        jsPDF: { 
+            unit: 'mm',
+            format: [customWidth, customHeight],
+            orientation: 'portrait',
+            margin: [2, 10, 10, 10],  // Add margins here if needed for centering
+            pageBreak: 'auto',  // Auto page breaks
+        }
+    })
+    .save();
+
+
+
+// Show the save button again after the PDF is generated
+pdfGenerated = true;
+saveButton.style.display = 'inline';
+
+
+    // Prepare form data for saving PO record
+    const formData = new FormData();
+    formData.append('VendorSelection', '{{ vendor.VendorName }}');
+    formData.append('PONumber', '{{ parentpodata.PONumber }}');
+    formData.append('POReference', '{{ parentpodata.POReference }}');
+    formData.append('ApprovalFrom', '{{ parentpodata.ApprovalFrom }}');
+    formData.append('VendorReference', '{{ parentpodata.VendorReference }}');
+    formData.append('PODate', '{{ parentpodata.PODate }}');
+    formData.append('POEmailCopy', '{{ parentpodata.emailCopyPath }}');
+
+    // Add table rows to form data
+    rows.forEach(row => {
+        const description = row.querySelector('[name^="description_"]').value;
+        const hsnCode = row.querySelector('[name^="hsn_code_"]').value;
+        const quantity = row.querySelector('[name^="quantity_"]').value;
+        const rate = row.querySelector('[name^="unit_rate_"]').value;
+        const amount = row.querySelector('[name^="basic_value_"]').value;
+        const gstRate = row.querySelector('[name^="gst_rate_"]').value;
+        const gstAmount = row.querySelector('[name^="gst_amount_"]').value;
+        const totalAmount = row.querySelector('[name^="total_amount_"]').value;
+
+        formData.append(`description_${row.id}`, description);
+        formData.append(`hsn_code_${row.id}`, hsnCode);
+        formData.append(`quantity_${row.id}`, quantity);
+        formData.append(`unit_rate_${row.id}`, rate);
+        formData.append(`basic_value_${row.id}`, amount);
+        formData.append(`gst_rate_${row.id}`, gstRate);
+        formData.append(`gst_amount_${row.id}`, gstAmount);
+        formData.append(`total_amount_${row.id}`, totalAmount);
+    });
+
+            // Submit the form data to the server (use your actual endpoint here)
+            const response = await fetch('/your-server-endpoint', {
+                method: 'POST',
+                body: formData
+            });
+    
+            // Handle server response
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message); // Show success message if the PO is saved
+            } else {
+                alert(result.message); // Show error message if there was an issue saving the PO
+            }
+        }
+    
+        // Event listener for the "Move to Dashboard" button
+        document.getElementById('move-to-dashboard').addEventListener('click', function(event) {
+            if (!pdfGenerated) {
+                // If PDF hasn't been generated, show a confirmation dialog
+                const confirmation = confirm("Have you clicked on the 'Generate PDF' button?");
+                
+                if (!confirmation) {
+                    event.preventDefault(); // Prevent the move if PDF wasn't generated
+                    alert("Please generate the PDF before proceeding.");
+                }
+            }
+        });
+        function calculateRow(id) {
+            // Get the values from the table cells
+            var quantity = parseFloat(document.querySelector(`input[name='quantity_${id}']`).value);
+            var unitRate = parseFloat(document.querySelector(`input[name='unit_rate_${id}']`).value);
+            var gstRate = parseFloat(document.querySelector(`input[name='gst_rate_${id}']`).value);
+    
+            if (isNaN(quantity) || isNaN(unitRate) || isNaN(gstRate)) {
+                alert("Please enter valid values.");
+                return;
+            }
+    
+            // Calculate Basic Value
+            var basicValue = quantity * unitRate;
+            document.querySelector(`input[name='basic_value_${id}']`).value = basicValue.toFixed(2);
+    
+            // Calculate GST Amount
+            var gstAmount = (basicValue * gstRate) / 100;
+            document.querySelector(`input[name='gst_amount_${id}']`).value = gstAmount.toFixed(2);
+    
+            // Calculate Total Amount
+            var totalAmount = basicValue + gstAmount;
+            document.querySelector(`input[name='total_amount_${id}']`).value = totalAmount.toFixed(2);
+
+    
+    
+            // Update Overall Totals
+            updateOverallTotals();
+        }
+    
+        function updateOverallTotals() {
+    let totalAmount = 0;
+    let totalGSTValue = 0;
+    let totalBasicValue = 0; // New variable to store the total basic value
+    
+    // Loop through all rows and calculate the totals
+    var rows = document.querySelectorAll("#purchase-order-table tbody tr");
+    
+    // Ensure the table exists and has rows
+    if (rows.length > 0) {
+        rows.forEach(row => {
+            var rowTotalAmount = parseFloat(row.querySelector("input[name^='total_amount_']").value);
+            var rowGSTAmount = parseFloat(row.querySelector("input[name^='gst_amount_']").value);
+            var rowBasicValue = parseFloat(row.querySelector("input[name^='basic_value_']").value);
+            
+            // Sum the total values only if the values are valid numbers
+            if (!isNaN(rowTotalAmount)) totalAmount += rowTotalAmount;
+            if (!isNaN(rowGSTAmount)) totalGSTValue += rowGSTAmount;
+            if (!isNaN(rowBasicValue)) totalBasicValue += rowBasicValue; // Add to total basic value
+        });
+    } else {
+        console.warn("No rows found in the table.");
+    }
+    
+    // Update the total values on the form dynamically
+    document.getElementById("totalAmountSum").value = totalBasicValue.toFixed(2);
+    document.getElementById("totalGSTValue").value = totalGSTValue.toFixed(2);
+    document.getElementById("totalAmount").value = totalAmount.toFixed(2);
+    
+    // Convert Total Amount to Words and update the totalValueWords field
+    var totalAmountInWords = numberToWords(totalAmount);
+    document.getElementById("totalValueWords").value = totalAmountInWords; // Dynamically set the value here
+}
+
+
+
+function numberToWords(num) {
+    // Ensure the number is rounded to the nearest integer
+    num = Math.round(num);
+    
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const units = ["", "Thousand", "Lakh", "Crore"]; // Indian numbering system
+
+    if (num === 0) return "Indian Rupees Zero Only";  // Special case for zero
+
+    let result = "";
+    let i = 0; // Unit (Thousand, Lakh, Crore)
+
+    // Process the number in chunks of 2 digits (Thousands, Lakhs, Crores, etc.)
+    while (num > 0) {
+        if (num % 1000 !== 0) {  // Only process if the current chunk is non-zero
+            result = helper(num % 1000) + units[i] + " " + result; // Add the unit (Thousand, Lakh, Crore)
+        }
+        num = Math.floor(num / 1000);  // Move to the next chunk (thousands, lakhs, crores, etc.)
+        i++;  // Move to the next unit
+    }
+
+    // Add fractional part (paise) if needed
+    return "Indian Rupees " + result.trim() + " Only";
+}
+
+function helper(num) {
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    let result = "";
+
+    if (num >= 100) {  // Handle hundreds
+        result += ones[Math.floor(num / 100)] + " Hundred ";  // Add the "Hundred" part
+        num %= 100;  // Reduce the number to the remaining part
+    }
+
+    if (num >= 20) {  // Handle tens (20 - 99)
+        result += tens[Math.floor(num / 10)] + " ";  // Add the tens part
+        num %= 10;  // Reduce to the ones
+    }
+
+    if (num > 0) {  // Handle ones (1 - 19)
+        result += ones[num] + " ";
+    }
+
+    return result.trim();
+}
+
+// Function to convert fractional part (paise) to words
+function convertPaise(num) {
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    
+    let result = "";
+
+    if (num >= 20) {
+        result += tens[Math.floor(num / 10)] + " ";
+        num %= 10;
+    }
+
+    if (num > 0) {
+        result += ones[num] + " ";
+    }
+
+    return result.trim();
+}
+
+// Main function to handle currency and paise
+function convertCurrencyToWords(amount) {
+    const roundedAmount = Math.floor(amount);
+    const paise = Math.round((amount - roundedAmount) * 100);  // Get the fractional part (Paise)
+
+    let amountInWords = numberToWords(roundedAmount);  // Convert the integer part
+
+    if (paise > 0) {
+        let paiseInWords = convertPaise(paise);
+        amountInWords += " and " + paiseInWords + " Paise Only";
+    }
+
+    return amountInWords;
+}
+
+
+
+
+        document.querySelectorAll('input[type="number"], input[type="text"]').forEach(input => {
+    input.addEventListener('input', updateOverallTotals);
+});
+
+    </script>
+        
+</body>
+</html>

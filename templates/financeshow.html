@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+<div class="col-10 offset-md-2">
+  <br></br>
+  <br></br>
+
+  <h4 style="display: flex; justify-content: space-between;">
+    <span style="margin-right: auto;">ClaimNumber: {{ parentclaimdata.ClaimNumber }}</span>
+    <span style="padding-right: 300px;">AssociateName: {{ parentclaimdata.user.first_name }}</span>
+</h4>
+
+{% if comments %} 
+<div class="col-10">  
+      <div class="card-header">Comments</div>
+      <div class="card-body">{{ comments }}</div>  
+</div>
+    {% endif %}
+
+{% if managementcomments %}
+<div class="col-10">  
+          <div class="card-header">ManagementComments</div>
+          <div class="card-body">{{ managementcomments }}</div>      
+</div>
+{% endif %}
+{% if excel_file_url %}
+<div class="col-10 mt-3">
+    <div class="card-header">Attached Excel File</div>
+    <div class="card-body">
+        <a href="{{ excel_file_url }}" class="btn btn-success btn-sm" download>
+            <i class="fa fa-file-excel"></i> {{ excel_file_name }}
+        </a>
+
+        <button type="button" id="viewExcelBtn" class="btn btn-primary btn-sm ms-1 ml-1"
+                data-url="{{ excel_file_url }}" data-name="{{ excel_file_name }}">
+            <i class="fa fa-eye"></i> View
+        </button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+document.getElementById('viewExcelBtn').addEventListener('click', async function () {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Open the tab immediately (inside the click) so the browser does not block it
+    const w = window.open('', '_blank');
+    w.document.write('<p style="font-family:sans-serif">Loading...</p>');
+
+    try {
+        const res = await fetch(this.dataset.url, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const wb = XLSX.read(await res.arrayBuffer(), { type: 'array' });
+
+        let html = '<title>' + esc(this.dataset.name) + '</title>' +
+            '<style>' +
+            'body{font-family:sans-serif;font-size:13px;padding:20px}' +
+            'table{border-collapse:collapse;margin-bottom:30px}' +
+            'td,th{border:1px solid #999;padding:4px 8px;white-space:nowrap}' +
+            '</style>' +
+            '<h3>' + esc(this.dataset.name) + '</h3>';
+
+        wb.SheetNames.forEach(function (n) {
+            html += '<h4>' + esc(n) + '</h4>' + XLSX.utils.sheet_to_html(wb.Sheets[n]);
+        });
+
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    } catch (e) {
+        w.document.body.innerHTML = 'Could not open the Excel file.';
+    }
+});
+</script>
+{% endif %}
+
+
+  <div class="row">
+    <div class="col-10">
+      {% for m in childclaimdata %}
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card-header">ReceiptNumber</div>
+              <div class="card-body">{{ m.ReceiptNumber }}</div>
+              <div class="card-header">ReceiptDate</div>
+              <div class="card-body">{{ m.ReceiptDate }}</div>
+              <div class="card-header">ExpenseHead</div>
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <input type="text"
+                         class="form-control expense-head-input"
+                         id="expensehead-{{ m.id }}"
+                         data-child-id="{{ m.id }}"
+                         data-original="{{ m.ExpenseHead|default_if_none:'' }}"
+                         value="{{ m.ExpenseHead|default_if_none:'' }}"
+                         placeholder="Expense Head">
+                  <button type="button"
+                          class="btn btn-primary btn-sm expense-head-save"
+                          data-child-id="{{ m.id }}"
+                          style="margin-left:8px;" disabled>Save</button>
+                </div>
+                <small id="expensehead-msg-{{ m.id }}"></small>
+              </div>
+              <div class="card-header">ClaimAmount</div>
+              <div class="card-body">{{ m.ClaimAmount }}</div>
+              <div class="card-header">Remarks</div>
+              <div class="card-body">{{ m.Remarks }}</div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-2">
+                  {% if m.BillAttachment %}
+                      {% if m.BillAttachment.name|slice:"-4:" == ".pdf" %}
+           
+                          <iframe src="{{ m.BillAttachment.url }}" class="pdf-viewer" width="150%" height="600" frameborder="0" allowfullscreen></iframe>
+             
+                      {% else %}
+                          <a href="{{ m.BillAttachment.url }}" target="_blank" class="small-font">
+                              <img src="{{ m.BillAttachment.url }}" alt="Bill Image" class="img-fluid" width="700" height="1400">
+                          </a>
+                      {% endif %}
+                  {% else %}
+                      No Bill Attachment
+                  {% endif %}
+              </div>
+          </div>          
+                  
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="col-md-6">
+        <div class="card-header">TotalClaimAmount</div>
+        <div class="card-body">{{ total_claim_amount }}</div>
+      </div>
+      
+  
+
+
+        <form action="{% url 'download_claim_files' parentclaimdata.ClaimNumber %}" method="post" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">Download All Bills</button>
+      </form>
+    
+      
+      <style>
+        #go-back-button {
+          position: fixed;
+          bottom: 10px;
+          right: 20px;
+          z-index: 1;
+        }
+      </style>
+        
+        <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+    </div>
+  </div>
+</div>
+
+
+  </div>
+
+
+<script>
+  // Total claim amount injected from Django context
+  var totalClaimAmount = parseFloat("{{ total_claim_amount|default_if_none:'0' }}") || 0;
+
+  (function () {
+    var form = document.getElementById("accounts-form");
+    if (!form) return;
+
+    var status    = document.getElementById("accountstatus");
+    var approved  = document.getElementById("approvedamount");
+    var hold      = document.getElementById("holdamounthr");
+    var reject    = document.getElementById("rejectamounthr");
+    var advance   = document.getElementById("advancededuct");
+    var comments  = document.getElementById("accountscomments");
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var errorMsg  = document.getElementById("amount-error");
+
+    function num(el) {
+      var v = parseFloat(el.value);
+      return (isNaN(v) || v < 0) ? 0 : v;
+    }
+    function round2(n) { return Math.round(n * 100) / 100; }
+
+    // Approved = Total - Hold - Rejected - Advance Deduct
+    function recalc() {
+      if (status.value !== "Approved") {
+        approved.value = "";
+        hold.readOnly = true;
+        reject.readOnly = true;
+        advance.readOnly = true;
+        errorMsg.style.display = "none";
+        return true;
+      }
+
+      hold.readOnly = false;
+      reject.readOnly = false;
+      advance.readOnly = false;
+
+      var remaining = round2(totalClaimAmount - num(hold) - num(reject) - num(advance));
+
+      if (remaining < 0) {
+        approved.value = 0;
+        errorMsg.style.display = "block";
+        return false;
+      }
+      approved.value = remaining;
+      errorMsg.style.display = "none";
+      return true;
+    }
+
+    // Submit is enabled only when: Reviewed selected + comments filled + amounts valid
+    function updateSubmitState() {
+      var amountsOk   = recalc();
+      var statusOk    = status.value === "Approved";
+      var commentsOk  = comments.value.trim().length > 0;
+      submitBtn.disabled = !(statusOk && commentsOk && amountsOk);
+    }
+
+    status.addEventListener("change", function () {
+      if (status.value === "Approved") {
+        hold.value = "";
+        reject.value = "";
+        advance.value = "";
+      }
+      updateSubmitState();
+    });
+    hold.addEventListener("input", updateSubmitState);
+    reject.addEventListener("input", updateSubmitState);
+    advance.addEventListener("input", updateSubmitState);
+    comments.addEventListener("input", updateSubmitState);
+
+    // Final safety check + treat empty hold/reject/advance as 0
+    form.addEventListener("submit", function (e) {
+      if (hold.value === "")    hold.value = 0;
+      if (reject.value === "")  reject.value = 0;
+      if (advance.value === "") advance.value = 0;
+
+      if (comments.value.trim() === "" || !recalc() || status.value !== "Approved") {
+        e.preventDefault();
+        updateSubmitState();
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Processing...";
+    });
+
+    updateSubmitState(); // initialize on page load
+  })();
+
+  function goBack() {
+    window.history.back();
+  }
+  // ===== Editable Expense Head (saved per bill row) =====
+(function () {
+  var saveUrl = "{% url 'update_expense_head' parentclaimdata.ClaimNumber %}";
+
+  function getCsrf() {
+    var el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+  }
+
+  function rowParts(childId) {
+    return {
+      input: document.getElementById('expensehead-' + childId),
+      btn: document.querySelector('.expense-head-save[data-child-id="' + childId + '"]'),
+      msg: document.getElementById('expensehead-msg-' + childId)
+    };
+  }
+
+  function save(childId) {
+    var p = rowParts(childId);
+    var value = p.input.value.trim();
+
+    if (!value) {
+      p.msg.className = 'text-danger';
+      p.msg.textContent = 'Expense Head cannot be empty.';
+      return;
+    }
+
+    p.btn.disabled = true;
+    p.msg.className = 'text-muted';
+    p.msg.textContent = 'Saving…';
+
+    fetch(saveUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+      body: JSON.stringify({ child_id: childId, expensehead: value })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.status === 'success') {
+        p.input.value = data.expensehead;
+        p.input.setAttribute('data-original', data.expensehead);
+        p.msg.className = 'text-success';
+        p.msg.textContent = 'Saved.';
+        p.btn.disabled = true;
+      } else {
+        p.msg.className = 'text-danger';
+        p.msg.textContent = data.message || 'Could not save.';
+        p.btn.disabled = false;
+      }
+    })
+    .catch(function (err) {
+      p.msg.className = 'text-danger';
+      p.msg.textContent = 'Error: ' + err;
+      p.btn.disabled = false;
+    });
+  }
+
+  // Enable Save only when the value actually changed
+  document.addEventListener('input', function (e) {
+    if (!e.target.classList.contains('expense-head-input')) return;
+    var p = rowParts(e.target.getAttribute('data-child-id'));
+    var changed = e.target.value.trim() !== e.target.getAttribute('data-original');
+    p.btn.disabled = !changed;
+    p.msg.textContent = '';
+  });
+
+  // Click Save
+  document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('expense-head-save')) {
+      save(e.target.getAttribute('data-child-id'));
+    }
+  });
+
+  // Enter key saves (and doesn't submit the accounts form)
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.classList.contains('expense-head-input')) {
+      e.preventDefault();
+      var p = rowParts(e.target.getAttribute('data-child-id'));
+      if (!p.btn.disabled) save(e.target.getAttribute('data-child-id'));
+    }
+  });
+})();
+</script>
+
+{% endblock %}

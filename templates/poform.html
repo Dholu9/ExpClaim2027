@@ -1,0 +1,214 @@
+{% extends 'base2.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<br>
+
+<div class="col-md-6 offset-md-3">
+  <form method="post" action="{% url 'save_po_record' %}" class="row g-3" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Parent Model Form -->
+    <div class="col-12">
+      <label for="POReference" class="form-label">PO Reference</label>
+      <input type="text" class="form-control" id="POReference" name="POReference" required>
+    </div>
+
+    <div class="col-12">
+      <label for="PONumber" class="form-label">PO To Be Received From</label>
+      <select name="PONumber" id="PONumber" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="Bangalore">Bangalore</option>
+        <option value="Gurugram">Gurugram</option>
+        <option value="Salem">Salem</option>
+        <option value="Karimnagar">Karimnagar</option>
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label for="VendorReference" class="form-label">Vendor Reference</label>
+      <input type="text" class="form-control" id="VendorReference" name="VendorReference" required>
+    </div>
+
+    <div class="col-12">
+      <label for="ShipTo" class="form-label">Ship To</label>
+      <select name="ShipTo" id="ShipTo" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="Bangalore">Bangalore</option>
+        <option value="Gurugram">Gurugram</option>
+        <option value="Srinagar">Srinagar</option>
+        <option value="Salem">Salem</option>
+        <option value="Karimnagar">Karimnagar</option>
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label for="ApprovalFrom" class="form-label">Approval From</label>
+      <select name="ApprovalFrom" id="ApprovalFrom" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="Mahima Shrivastava">Mahima Shrivastava</option>
+        <option value="Brajesh Shrivastava">Brajesh Shrivastava</option>
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label for="POEmailCopy" class="form-label">Email Attachment</label>
+      <input class="form-control" type="file" id="POEmailCopy" name="POEmailCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff" required>
+    </div>
+
+    <div class="col-12">
+      <label for="PODate" class="form-label">Date</label>
+      <input type="date" class="form-control" id="PODate" name="PODate" min="{{ minDate }}" max="{{ maxDate }}" required>
+    </div>
+
+    <div class="col-12">
+      <label for="VendorSelection" class="form-label">Vendor Name</label>
+      <select id="VendorSelection" name="VendorSelection" class="form-control" required>
+        <option value="" disabled selected>Select a Vendor</option>
+        {% for vendor in vendors %}
+          <option value="{{ vendor.VendorName }}">{{ vendor.VendorName }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-12">
+      <label for="terms" class="form-label"><strong>TERMS / SPECIAL INSTRUCTIONS:</strong></label>
+      <textarea class="form-control" id="terms" name="terms" rows="10" required>
+
+      </textarea>
+    </div>
+
+    <div class="col-md-12">
+      <h3>Product Details</h3>
+      <div id="product-container">
+        <!-- Product fields will be added here -->
+      </div>
+      <button type="button" class="btn btn-info" onclick="addProductFields();">Add Product</button>
+     
+    </div>
+
+    <div class="offset-md-10">
+      <button type="submit" class="btn btn-info" id="submitButton">Preview</button>
+      <button type="button" class="btn btn-info" id="go-back-button" onclick="goBack()">Go Back</button>
+    </div>
+  </form>
+  <br>
+</div>
+
+<script>
+  let productCount = 0;
+
+function addProductFields() {
+    productCount++;
+    const productContainer = document.getElementById('product-container');
+
+    const productDiv = document.createElement('div');
+    productDiv.className = 'product-entry';
+    productDiv.id = `product-entry-${productCount}`;  // Give each product entry a unique ID
+
+    productDiv.innerHTML = `
+        <div class="col-md-12">
+            <label for="Description${productCount}" class="form-label">Product Description</label>
+            <input type="text" class="form-control" id="Description${productCount}" name="Description${productCount}" required>
+        </div>
+        <div class="col-12">
+            <label for="HSNCode${productCount}" class="form-label">HSN/SAC Code</label>
+            <input type="number" class="form-control" id="HSNCode${productCount}" name="HSNCode${productCount}">
+        </div>
+        <div class="col-md-7">
+            <label for="Quantity${productCount}" class="form-label">Quantity</label>
+            <input type="number" class="form-control" id="Quantity${productCount}" name="Quantity${productCount}" required oninput="updateTotal(${productCount})">
+            <label for="Unit${productCount}" class="form-label">Unit</label>
+            <input type="text" class="form-control" id="Unit${productCount}" name="Unit${productCount}">
+        </div>
+        <div class="col-md-7">
+            <label for="Rate${productCount}" class="form-label">Rate</label>
+            <input type="number" class="form-control" id="Rate${productCount}" name="Rate${productCount}" step="0.01" min="0" required oninput="updateTotal(${productCount})">
+        </div>
+        <div class="col-md-7">
+            <label for="GSTPercentage${productCount}" class="form-label">GST Percentage</label>
+            <input type="number" class="form-control" id="GSTPercentage${productCount}" name="GSTPercentage${productCount}" placeholder="Enter GST percentage" min="0" step="0.01" oninput="updateTotal(${productCount})" required>
+        </div>
+        <div class="col-md-7">
+            <label for="Amount${productCount}" class="form-label">Amount</label>
+            <input type="number" class="form-control" id="Amount${productCount}" name="Amount${productCount}" required readonly>
+        </div>
+        <div class="col-md-7">
+            <label for="TotalAmount${productCount}" class="form-label">Total Amount (including GST)</label>
+            <input type="number" class="form-control" id="TotalAmount${productCount}" name="TotalAmount${productCount}" readonly>
+        </div>
+        <button type="button" class="btn btn-danger remove-product" onclick="removeProduct(${productCount})">Remove Product</button>
+    `;
+
+    productContainer.appendChild(productDiv);
+
+    // Enable the "Preview" button after adding at least one product
+    enablePreviewButton();
+}
+
+function removeProduct(count) {
+    const productDiv = document.getElementById(`product-entry-${count}`);
+    if (productDiv) {
+        productDiv.remove();
+        productCount--;
+    }
+
+    // Disable the "Preview" button if no products remain
+    enablePreviewButton();
+}
+
+function enablePreviewButton() {
+    const previewButton = document.getElementById('submitButton');
+    const productContainer = document.getElementById('product-container');
+    
+    // If there is at least one product, enable the Preview button
+    if (productContainer.children.length > 0) {
+        previewButton.disabled = false;
+    } else {
+        previewButton.disabled = true;
+    }
+}
+
+function updateTotal(count) {
+    const quantity = parseFloat(document.getElementById(`Quantity${count}`).value) || 0;
+    const rate = parseFloat(document.getElementById(`Rate${count}`).value) || 0;
+    const gstPercentage = parseFloat(document.getElementById(`GSTPercentage${count}`).value) || 0;
+
+    // Calculate the amount (Quantity * Rate)
+    const amount = quantity * rate;
+    document.getElementById(`Amount${count}`).value = amount.toFixed(2);
+
+    // Calculate total amount (Amount + (Amount * GSTPercentage / 100))
+    const totalAmount = amount + (amount * gstPercentage / 100);
+    document.getElementById(`TotalAmount${count}`).value = totalAmount.toFixed(2);
+}
+
+// Initially disable the "Preview" button
+document.getElementById('submitButton').disabled = true;
+
+document.getElementById('VendorSelection').addEventListener('change', function() {
+    var vendorName = this.value;  // Get the selected vendor name
+    var termsTextArea = document.getElementById('terms');
+    
+    // Modify the text inside the text area
+    if (vendorName) {
+      termsTextArea.value = 'PURCHASE ORDER & PAYMENT: In favour of ' + vendorName + '.\n\n' +
+                            'Duration/Delivery: Delivery should be within 2 weeks after confirmation.\n\n' +
+                            'BILLING & PAYMENTS:\n' +
+                            '1. 50% Advance Payment will be done after PO acceptance.\n' +
+                            '2. 50% balance payment of Sl. No. 1 will be done once App development work is over.\n' +
+                            '3. Total Order Value All Inclusive.\n' +
+                            '4. 50% balance payment of Sl. No. 2 will be done after 6 months along with work completion.\n' +
+                            'GST amount will be paid after Tax invoice submission.\n\n' +
+                            'PAYMENT TERMS: Payment will be made through Bank Transfer to registered vendor Bank Account.\n\n' +
+                            'PO ACCEPTANCE: Immediately.\n\n' +
+                            'Scope of Work: Updation should be done as per attached Annexure.';
+    }
+});
+
+
+
+
+    </script>
+    
+{% endblock %}

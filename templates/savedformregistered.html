@@ -1,0 +1,332 @@
+{% extends 'base2.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+            <div class="col-md-6 offset-md-3">
+                <h2 style="font-size: 30px; color: blueviolet; font-weight: bold; text-align: center;">Vendor Details({{vendor.VendorId}})</h2>
+                <br></br>
+                    <form method="post" action="{% url 'updatevendordetail' vendor.VendorId %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Vendor Information Fields -->
+                        <div class="form-row">
+
+                        
+
+                            <div class="form-group col-md-4"> 
+                                <label for="VendorName" class="form-label" style="font-weight: bolder;">Vendor Name</label>                         
+                                <input type="text" class="form-control" name="VendorName" value="{{vendor.VendorName}}" required>
+                            </div>
+                            <div class="form-group col-md-4">  
+                                <label for="VendorEmail" class="form-label" style="font-weight: bolder;">Vendor Email</label>                          
+                                <input type="text" class="form-control" name="VendorEmail" value="{{vendor.VendorEmail}}" required>
+                            </div>
+
+                            <div class="form-group col-md-2"> 
+                                <label for="MobileNumber" class="form-label" style="font-weight: bolder;">Mobile Number</label>                          
+                                <input type="number" class="form-control" name="MobileNumber" value="{{vendor.MobileNumber}}" required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="VendorGST" class="form-label" style="font-weight: bolder;">Vendor GST</label>                            
+                                <input type="text" class="form-control" name="VendorGST" value="{{vendor.VendorGST}}" maxlength="15">
+                            </div>
+
+                            <div class="form-group col-md-2">
+                                <label for="PanNumber" class="form-label" style="font-weight: bolder;">PanNumber</label>
+                            <input type="text" class="form-control" name="PanNumber" value="{{vendor.PanNumber}}" maxlength="10" required>
+                            </div>
+                            
+                            <div class="form-group col-md-4">
+                                <label for="Duration" class="form-label" style="font-weight: bolder;">Duration of Agreement(in years)</label>
+                            <input type="number" class="form-control" name="Duration" value="{{vendor.Duration}}" required>
+                            </div>                          
+                        </div>
+                        
+                 
+                        <div class="form-row">
+                            <div class="form-group col-md-2">  
+                                <label for="PlotNumber" class="form-label" style="font-weight: bolder;">Plot Number</label>                         
+                                <input type="text" class="form-control" name="PlotNumber" value="{{vendor.PlotNumber}}">
+                            </div>
+                            <div class="form-group col-md-4">  
+                                <label for="StreetName" class="form-label" style="font-weight: bolder;">Street Name</label>                         
+                                <input type="text" class="form-control" name="StreetName" value="{{vendor.StreetName}}">
+                            </div>
+                            <div class="form-group col-md-4"> 
+                                <label for="Locality" class="form-label" style="font-weight: bolder;">Locality</label>                           
+                                <input type="text" class="form-control" name="Locality" value="{{vendor.Locality}}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">   
+                                <label for="City" class="form-label" style="font-weight: bolder;">City</label>                   
+                                <input type="text" class="form-control" name="City" value="{{vendor.City}}" required>
+                            </div>
+                            <div class="form-group col-md-4">  
+                                <label for="State" class="form-label" style="font-weight: bolder;">State</label>                        
+                                <input type="text" class="form-control" name="State" value="{{vendor.State}}" required>
+                            </div>
+                            <div class="form-group col-md-2">    
+                                <label for="Pincode" class="form-label" style="font-weight: bolder;">Pincode</label>                
+                                <input type="number" class="form-control" name="Pincode" value="{{vendor.Pincode}}" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">  
+                                <label for="BankName" class="form-label" style="font-weight: bolder;">BankName</label>                   
+                                <input type="text" class="form-control" name="BankName" value="{{vendor.BankName}}" required>
+                            </div>
+                            <div class="form-group col-md-4"> 
+                                <label for="AccountNumber" class="form-label" style="font-weight: bolder;">AccountNumber</label>                   
+                                <input type="text" class="form-control" name="AccountNumber" value="{{vendor.AccountNumber}}" required>
+                            </div>
+                            <div class="form-group col-md-2">  
+                                <label for="IFSCCode" class="form-label" style="font-weight: bolder;">IFSCCode</label>                             
+                                <input type="text" class="form-control" name="IFSCCode" value="{{vendor.IFSCCode}}" required maxlength="11">
+                            </div>
+                        </div>
+                        <div class="form-row">                     
+                            {% if vendor.CancelledCheque.name %}
+                            <div class="col-md-6">
+                              <label for="CancelledCheque" class="form-label" style="font-weight: bolder;">Cancelled Cheque</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if vendor.CancelledCheque.name %}
+                                      <a href="{{ vendor.CancelledCheque.url }}" target="_blank" id='faal' class="small-font" style="font-weight: bolder;">
+                                          {{ vendor.CancelledCheque.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>
+                                  
+                                  <input type="file" id="CancelledCheque" name="CancelledChequeNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'main')" style="display: none;">
+                                  <label for="CancelledCheque" class="btn btn-info" id="fileLabel">Replace file</label>
+                                  <span id="fileName" class="ml-2"></span>
+                              </div>
+                          </div>   
+                          
+                          {% else %}
+                          <div class="form-group col-md-4" id="CancelledCheque">  
+                              <label for="CancelledCheque" class="form-label" style="font-weight: bolder;">Cancelled Cheque</label>
+                              <input class="form-control" type="file" name="CancelledChequeNew" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                              <p class="small-font">Accepted file formats: PDF, JPEG, PNG</p>
+                          </div>            
+                            
+                            {% endif %}  
+                      
+                            {% if vendor.GSTCopy.name %}
+                            <div class="col-md-6">
+                              <label for="GSTCopy" class="form-label" style="font-weight: bolder;">GST Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if vendor.GSTCopy.name %}
+                                      <a href="{{ vendor.GSTCopy.url }}" target="_blank" id='faaladd' class="small-font" style="font-weight: bolder;">
+                                          {{ vendor.GSTCopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>                                  
+                                  <input type="file" id="GSTCopy" name="GSTCopyNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'add')" style="display: none;">
+                                  <label for="GSTCopy" class="btn btn-info" id="fileLabeladd">Replace file</label>
+                                  <span id="fileName" class="ml-2"></span>
+                              </div>
+                          </div>  
+                  
+                          {% else %}
+                          <div class="form-group col-md-4" id="GSTCopy">  
+                              <label for="GSTCopy" class="form-label" style="font-weight: bolder;">GST Copy*</label>
+                              <input class="form-control" type="file" name="GSTCopyNew" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                              <p class="small-font">Accepted file formats: PDF, JPEG, PNG</p>
+                          </div>        
+                      
+                            {% endif %} 
+
+                            {% if vendor.MSMECopy.name %}
+                            <div class="col-md-6">
+                              <label for="MSMECopy" class="form-label" style="font-weight: bolder;">MSME Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if vendor.MSMECopy.name %}
+                                      <a href="{{ vendor.MSMECopy.url }}" target="_blank" id='faaladv' class="small-font" style="font-weight: bolder;">
+                                          {{ vendor.MSMECopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>                                  
+                               <input type="file" id="MSMECopy" name="MSMECopyNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'adv')" style="display: none;">
+                                  <label for="MSMECopy" class="btn btn-info" id="fileLabeladv">Replace file</label>
+                                  <span id="fileName" class="ml-2"></span>
+                              
+                              </div>
+                          </div>   
+                          {% else %}
+                          <div class="form-group col-md-4" id="MSMECopy">  
+                              <label for="MSMECopy" class="form-label" style="font-weight: bolder;">MSME Copy</label>
+                              <input class="form-control" type="file" name="MSMECopyNew" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                              <p class="small-font">Accepted file formats: PDF, JPEG, PNG</p>
+                          </div>         
+                            
+                            {% endif %}    
+                            
+                            {% if vendor.EmailCopy.name %}
+                            <div class="col-md-6">
+                              <label for="EmailCopy" class="form-label" style="font-weight: bolder;">Email Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if vendor.EmailCopy.name %}
+                                      <a href="{{ vendor.EmailCopy.url }}" target="_blank" id='faalade' class="small-font" style="font-weight: bolder;">
+                                          {{ vendor.EmailCopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>
+                                  
+                                  <input type="file" id="EmailCopy" name="EmailCopyNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'ade')" style="display: none;">
+                                  <label for="EmailCopy" class="btn btn-info" id="fileLabelade">Replace file</label>
+                                  <span id="fileName" class="ml-2"></span>
+                              </div>
+                          </div>  
+                          {% else %}
+                          <div class="form-group col-md-6" id="EmailCopy">  
+                              <label for="EmailCopy" class="form-label" style="font-weight: bolder;">Email Copy</label>
+                              <input class="form-control" type="file" name="EmailCopyNew" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                              <p class="small-font">Accepted file formats: PDF, JPEG, PNG</p>
+                          </div>           
+                            
+                            {% endif %} 
+
+                            {% if vendor.ContractCopy.name %}
+                            <div class="col-md-6">
+                                <label for="ContractCopy" class="form-label" style="font-weight: bolder;">Contract Copy</label>
+                                <div class="d-flex align-items-center">
+                                    <div>
+                                        {% if vendor.ContractCopy.name %}
+                                        <a href="{{ vendor.ContractCopy.url }}" target="_blank" id='faaladc' class="small-font" style="font-weight: bolder;">
+                                            {{ vendor.ContractCopy.name|slice:"-10:" }}
+                                        </a>
+                                        {% endif %}
+                                    </div> 
+                                                        
+                                    <input type="file" id="ContractCopy" name="ContractCopyNew" accept=".pdf, .jpeg, .jpg, .png" onchange="updateFileLabel(this, 'adc')" style="display: none;">
+                                    <label for="ContractCopy" class="btn btn-info" id="fileLabeladc">Replace file</label>
+                                    <span id="fileName" class="ml-2"></span>
+                                </div>
+                            </div> 
+                        {% endif %}
+                        
+                        {% if vendor.ContractCopy.name == '' or vendor.ContractCopy.name == 'default.pdf' %}
+                            <div class="form-group col-md-4" id="ContractCopy">  
+                                <label for="ContractCopy" class="form-label" style="font-weight: bolder;">Contract Copy</label>
+                                <input class="form-control" type="file" name="ContractCopyNew" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+                                <p class="small-font">Accepted file formats: PDF, JPEG, PNG</p>
+                            </div>         
+                        {% endif %}
+                        
+                    
+                      
+                        </div>
+                        <br></br>
+                        <div class="form-row">
+                            <div class="form-group col-md-4"> 
+                                <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>  
+                           
+                            </div>
+                            <div class="form-group col-md-4 offset-4">  
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                          
+                        
+                            </div>
+                    
+                    </form>
+                </div>
+   
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const maxFileSize = 2 * 1024 * 1024; // 2MB
+
+    function validateFileInput(input) {
+        const file = input.files[0];
+        if (file) {
+            const fileSize = file.size;
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/tiff'];
+
+            // Check file size
+            if (fileSize > maxFileSize) {
+                alert('File size exceeds 2MB');
+                input.value = ''; // Clear the input
+                return false;
+            }
+
+            // Check file type
+            if (!allowedTypes.includes(file.type)) {
+                alert('Invalid file type');
+                input.value = ''; // Clear the input
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // File input elements
+   
+});
+
+function displayFileLabel(labelId) {
+    const label = document.getElementById(labelId);
+    if (label) {
+        label.style.display = "inline-block";
+        label.textContent = 'Replace file';
+    }
+}
+
+function updateFileLabel(input, type) {
+    let fileLabel, fileNameDisplay;
+
+    if (type === 'main') {
+        fileLabel = document.getElementById('fileLabel');
+        fileNameDisplay = document.getElementById('faal');
+    } else if (type === 'add') {
+        fileLabel = document.getElementById('fileLabeladd');
+        fileNameDisplay = document.getElementById('faaladd');
+    } else if (type === 'adv') {
+        fileLabel = document.getElementById('fileLabeladv');
+        fileNameDisplay = document.getElementById('faaladv');
+    } else if (type === 'ade') {
+        fileLabel = document.getElementById('fileLabelade');
+        fileNameDisplay = document.getElementById('faalade');
+    } else if (type === 'adc') {
+        fileLabel = document.getElementById('fileLabeladc');
+        fileNameDisplay = document.getElementById('faaladc');
+    }
+
+    fileNameDisplay.textContent = '';
+
+    if (input.files.length > 0) {
+        const file = input.files[0];
+        const fileName = file.name;
+        const allowedFormats = ['pdf', 'jpeg', 'jpg', 'png'];
+        const fileExtension = fileName.split('.').pop().toLowerCase();
+
+        if (allowedFormats.includes(fileExtension)) {
+            fileLabel.textContent = 'Replace file';
+            fileNameDisplay.textContent = fileName;
+            fileLabel.style.display = 'inline-block';
+        } else {
+            alert("Please upload a file in one of the following formats: PDF, JPEG, JPG, PNG");
+            input.value = '';
+            fileLabel.textContent = 'Choose file';
+            fileLabel.style.display = 'none';
+        }
+    } else {
+        fileLabel.textContent = 'Choose file';
+        fileLabel.style.display = 'none';
+    }
+}
+
+function goBack() {
+    window.history.back();
+}
+
+</script>
+
+{% endblock %}

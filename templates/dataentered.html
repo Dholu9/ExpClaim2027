@@ -1,0 +1,705 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .claims-wrap {
+    --sidebar-offset: 16.66vw;
+    margin-left: var(--sidebar-offset);
+    width: calc(100vw - var(--sidebar-offset) - 24px);
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  @media (max-width: 992px) {
+    .claims-wrap { margin-left: 0; width: 100%; }
+  }
+
+  .toolbar button:focus-visible,
+  .col-toggle summary:focus-visible,
+  #claims-table a:focus-visible,
+  #search-form input:focus-visible,
+  #search-form button:focus-visible {
+    outline: 3px solid #1e6fd9;
+    outline-offset: 2px;
+  }
+
+  .table-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: scroll;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  th, td { width: 140px; }
+
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+    border-right: 2px solid #380a0a;
+    vertical-align: middle;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background-color: rgb(207, 219, 224);
+    text-align: center;
+    vertical-align: middle;
+    font-size: 12px;
+    font-weight: bold;
+    color: rgb(43, 26, 53);
+    overflow: visible;
+    white-space: nowrap;
+    padding: 8px 6px;
+    z-index: 10;
+  }
+
+  /* ===== Split rows (purple tint + purple left bar) ===== */
+  #claims-table tbody tr.split-row > td {
+    background-color: #f3eefc;
+    box-shadow: inset 0 0 0 9999px #f3eefc;
+  }
+  #claims-table tbody tr.split-row > td:first-child {
+    box-shadow: inset 4px 0 0 #6f42c1, inset 0 0 0 9999px #f3eefc;
+  }
+
+  /* ===== Row highlight: hover (yellow) and clicked row (blue) ===== */
+  #claims-table tbody tr { cursor: pointer; }
+  #claims-table tbody tr:hover > td {
+    background-color: #fff4c2 !important;
+    box-shadow: inset 0 0 0 9999px #fff4c2 !important;
+  }
+  #claims-table tbody tr:hover > td:first-child {
+    box-shadow: inset 4px 0 0 #f0b400, inset 0 0 0 9999px #fff4c2 !important;
+  }
+  #claims-table tbody tr.row-active > td,
+  #claims-table tbody tr.row-active:hover > td {
+    background-color: #cfe5ff !important;
+    box-shadow: inset 0 0 0 9999px #cfe5ff !important;
+    border-top: 1px solid #1e6fd9;
+    border-bottom: 1px solid #1e6fd9;
+  }
+  #claims-table tbody tr.row-active > td:first-child,
+  #claims-table tbody tr.row-active:hover > td:first-child {
+    box-shadow: inset 5px 0 0 #1e6fd9, inset 0 0 0 9999px #cfe5ff !important;
+  }
+
+  .hr-approved { color: #146c43; font-weight: 600; }
+  .hr-pending  { color: #495057; font-weight: 600; }
+
+  .st-approved { color: #146c43; font-weight: 600; }
+  .st-rejected { color: #b02a37; font-weight: 600; }
+  .st-hold     { color: #8a5a00; font-weight: 600; }
+
+  /* ===== Remarks: one line + info icon ===== */
+  .remark-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .remark-text {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .remark-info {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1e6fd9;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    font-style: italic;
+    font-family: Georgia, serif;
+    cursor: help;
+    user-select: none;
+  }
+  .remark-info:focus-visible {
+    outline: 3px solid #1e6fd9;
+    outline-offset: 2px;
+  }
+
+  #remark-tooltip {
+    position: fixed;
+    z-index: 2000;
+    display: none;
+    max-width: 320px;
+    padding: 8px 12px;
+    background: #222;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+  }
+
+  /* ===== Toolbar ===== */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar button,
+  .col-toggle summary {
+    padding: 8px 14px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #fff;
+  }
+
+  #download-excel-btn { background-color: #1e6fd9; }
+  #download-excel-btn:hover { background-color: #1758ab; }
+  #cols-show-all { background-color: #5c636a; }
+  #cols-show-all:hover { background-color: #494f54; }
+
+  .col-toggle { position: relative; }
+  .col-toggle summary {
+    background-color: #5c636a;
+    list-style: none;
+  }
+  .col-toggle summary::-webkit-details-marker { display: none; }
+  .col-toggle[open] summary { background-color: #494f54; }
+
+  .col-toggle-panel {
+    position: absolute;
+    z-index: 30;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    min-width: 230px;
+    max-height: 340px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #767676;
+    border-radius: 6px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+  .col-toggle-panel .form-check { white-space: nowrap; }
+
+  .visually-hidden-fallback {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    td { font-size: 12px; padding: 10px; }
+    th { font-size: 12px; }
+  }
+</style>
+
+<div class="claims-wrap">
+
+  <div id="live-region" class="visually-hidden visually-hidden-fallback" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <h2 class="h5 mt-4" id="search-heading">Search claims</h2>
+
+  <form id="search-form" role="search" aria-labelledby="search-heading" class="mb-3">
+    <label for="username-input" class="visually-hidden visually-hidden-fallback">Username</label>
+    <input type="text" id="username-input" placeholder="Enter username" autocomplete="off">
+
+    <label for="claim-input" class="visually-hidden visually-hidden-fallback">Claim number</label>
+    <input type="text" id="claim-input" placeholder="Search claim number" autocomplete="off">
+
+    <button type="submit" id="search-button">Search</button>
+  </form>
+
+  <div class="toolbar" role="group" aria-label="Table actions">
+    <button type="button" id="download-excel-btn">Download as Excel</button>
+
+    <details class="col-toggle" id="column-toggle">
+      <summary>Show / hide columns</summary>
+      <fieldset class="col-toggle-panel">
+        <legend class="visually-hidden visually-hidden-fallback">Choose which columns are visible</legend>
+        <div class="mb-2">
+          <button type="button" id="cols-show-all" class="btn btn-sm text-white">Show all columns</button>
+        </div>
+        <div id="col-toggle-list"></div>
+      </fieldset>
+    </details>
+  </div>
+
+  <p id="scroll-hint" style="font-size:13px;color:#444;margin-bottom:4px;">This page is view only. Scroll the table sideways to see all columns, or hide columns you do not need. Click a row to keep it highlighted. Hover the "i" icon next to a remark to read it in full.</p>
+
+  <div class="table-container" tabindex="0" role="region" aria-labelledby="table-caption">
+  <table class="table table-striped" id="claims-table">
+    <caption id="table-caption" class="visually-hidden visually-hidden-fallback">
+      Expense claims (view only)
+    </caption>
+    <thead style="background-color:rgb(207, 219, 224);">
+      <tr>
+        <th scope="col">ClaimNo</th>
+        <th scope="col">ApprovedDt.</th>
+        <th scope="col">ApprovedBy</th>
+        <th scope="col">UserName</th>
+        <th scope="col">DTNo</th>
+        <th scope="col">Project</th>
+        <th scope="col">Sub-Project</th>
+        <th scope="col">Dept</th>
+        <th scope="col">Manager</th>
+        <th scope="col">ExpDetails</th>
+        <th scope="col">TotalClaimAmt</th>
+        <th scope="col">TL-Status</th>
+        <th scope="col">Mngr-Status</th>
+        <th scope="col">HoldAmountHR</th>
+        <th scope="col">RejectedAmountHR</th>
+        <th scope="col">AdvanceDeduct</th>
+        <th scope="col">HRRemarks</th>
+        <th scope="col">HRStatus</th>
+        <th scope="col">Appr.Amt</th>
+        <th scope="col">NatureOfExpense</th>
+        <th scope="col">AccountingLocation</th>
+        <th scope="col">WorkingLocation</th>
+        <th scope="col">HoldAmountFinance</th>
+        <th scope="col">HoldReleaseAmt</th>
+        <th scope="col">RejectedAmt</th>
+        <th scope="col">FinanceRemarks</th>
+        <th scope="col">FinanceStatus</th>
+        <th scope="col">PayableAmt</th>
+        <th scope="col">Paid</th>
+        <th scope="col">PaidDate</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for n in parentclaimdata %}
+      {% with n.claimstatus_set.first as status %}
+      {% with n.child_models.first as child %}
+
+      <!-- ===== Main row ===== -->
+      <tr style="background-color:rgb(239, 244, 247);"
+          data-claim-no="{{ n.ClaimNumber }}"
+          data-username="{{ n.user.first_name }}">
+        <td><a href="{% url 'showclaim' n.ClaimNumber %}">{{ n.ClaimNumber }}</a></td>
+        <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+        <td>{{ status.approvedby|default_if_none:"" }}</td>
+        <td>{{ n.user.first_name }}</td>
+        <td>{{ n.DTNumber }}</td>
+        <td>{{ n.Project }}</td>
+        <td>{{ n.Subproject }}</td>
+        <td>{{ n.Department }}</td>
+        <td>{{ n.Manager }}</td>
+        <td>{{ n.ExpenseDetails }}</td>
+        <td>{{ child.TotalClaimAmount|default:0 }}</td>
+        <td>
+          {% if n.claimstatus_set.all %}
+          {% for status in n.claimstatus_set.all %}
+            {% if status.tlstatus == 'Approved' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-success">{{ status.tlstatus }}</a>
+            {% elif status.tlstatus == 'Rejected' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-danger">{{ status.tlstatus }}</a>
+            {% elif status.tlstatus == 'ReSubmitted' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">{{ status.tlstatus }}</a>
+            {% else %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">Pending</a>
+            {% endif %}
+          {% endfor %}
+          {% else %}
+            <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+        </td>
+        <td>
+          {% if n.claimstatus_set.all %}
+          {% for status in n.claimstatus_set.all %}
+            {% if status.status == 'Approved' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-success">{{ status.status }}</a>
+            {% elif status.status == 'Rejected' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-danger">{{ status.status }}</a>
+            {% elif status.status == 'ReSubmitted' %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">{{ status.status }}</a>
+            {% else %}
+              <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">Pending</a>
+            {% endif %}
+          {% endfor %}
+          {% else %}
+            <a href="{% url 'showclaim' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+        </td>
+
+        <td>{{ status.holdamounthr|default:0 }}</td>
+        <td>{{ status.rejectamounthr|default:0 }}</td>
+        <td>{{ status.advancededuct|default:0 }}</td>
+
+        <!-- HRRemarks -->
+        <td>
+          {% if status.accountscomments %}
+          <div class="remark-wrap">
+            <span class="remark-text">{{ status.accountscomments }}</span>
+            <span class="remark-info" tabindex="0" role="note" aria-label="Full remarks: {{ status.accountscomments }}" data-remark="{{ status.accountscomments }}">i</span>
+          </div>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if status.accountstatus == 'Approved' %}
+            <span class="hr-approved">Reviewed</span>
+          {% else %}
+            <span class="hr-pending">Pending</span>
+          {% endif %}
+        </td>
+        <td>{{ status.approvedamount|default:0 }}</td>
+        <td>{{ status.NatureOfExpense|default_if_none:"" }}</td>
+        <td>{{ status.AccountingLocation|default_if_none:"" }}</td>
+        <td>{{ status.WorkingLocation|default_if_none:"" }}</td>
+        <td>{{ status.holdamountfin|default:0 }}</td>
+        <td>{{ status.releasehold|default:0 }}</td>
+        <td>{% if status.financestatus %}{{ status.rejectamountfin|default:0 }}{% else %}{{ status.rejectamounthr|default:0 }}{% endif %}</td>
+
+        <!-- FinanceRemarks -->
+        <td>
+          {% if status.financecomments %}
+          <div class="remark-wrap">
+            <span class="remark-text">{{ status.financecomments }}</span>
+            <span class="remark-info" tabindex="0" role="note" aria-label="Full remarks: {{ status.financecomments }}" data-remark="{{ status.financecomments }}">i</span>
+          </div>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if status.financestatus == 'Approved' %}<span class="st-approved">Approved</span>
+          {% elif status.financestatus == 'Rejected' %}<span class="st-rejected">Rejected</span>
+          {% elif status.financestatus == 'Hold' %}<span class="st-hold">Hold</span>
+          {% endif %}
+        </td>
+        <td>{{ status.payableamount|default:0 }}</td>
+        <td>{{ status.paid|default:0 }}</td>
+        <td>{{ status.paidon|date:"d-m-Y" }}</td>
+      </tr>
+
+      <!-- ===== Saved split rows of this claim (view only) ===== -->
+      {% for s in n.splits.all %}
+      <tr class="split-row"
+          data-claim-no="{{ n.ClaimNumber }}"
+          data-username="{{ n.user.first_name }}">
+        <td><a href="{% url 'showclaim' n.ClaimNumber %}">{{ n.ClaimNumber }}_{{ forloop.counter }}</a></td>
+        <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+        <td>{{ status.approvedby|default_if_none:"" }}</td>
+        <td>{{ n.user.first_name }}</td>
+        <td>{{ n.DTNumber }}</td>
+        <td>{{ n.Project }}</td>
+        <td>{{ n.Subproject }}</td>
+        <td>{{ n.Department }}</td>
+        <td>{{ n.Manager }}</td>
+        <td>{{ n.ExpenseDetails }}</td>
+        <td>{{ child.TotalClaimAmount|default:0 }}</td>
+        <td>{{ status.holdamounthr|default:0 }}</td>
+        <td>{{ status.rejectamounthr|default:0 }}</td>
+        <td>{{ status.advancededuct|default:0 }}</td>
+
+        <!-- HRRemarks (split row) -->
+        <td>
+          {% if status.accountscomments %}
+          <div class="remark-wrap">
+            <span class="remark-text">{{ status.accountscomments }}</span>
+            <span class="remark-info" tabindex="0" role="note" aria-label="Full remarks: {{ status.accountscomments }}" data-remark="{{ status.accountscomments }}">i</span>
+          </div>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if status.accountstatus == 'Approved' %}
+            <span class="hr-approved">Reviewed</span>
+          {% else %}
+            <span class="hr-pending">Pending</span>
+          {% endif %}
+        </td>
+        <td>0</td>
+        <td>{{ s.NatureOfExpense|default_if_none:"" }}</td>
+        <td>{{ s.AccountingLocation|default_if_none:"" }}</td>
+        <td>{{ s.WorkingLocation|default_if_none:"" }}</td>
+        <td>{{ s.holdamountfin|default:0 }}</td>
+        <td>{{ s.releasehold|default:0 }}</td>
+        <td>{{ s.rejectamountfin|default:0 }}</td>
+
+        <!-- FinanceRemarks (split row) -->
+        <td>
+          {% if s.financecomments %}
+          <div class="remark-wrap">
+            <span class="remark-text">{{ s.financecomments }}</span>
+            <span class="remark-info" tabindex="0" role="note" aria-label="Full remarks: {{ s.financecomments }}" data-remark="{{ s.financecomments }}">i</span>
+          </div>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if s.financestatus == 'Approved' %}<span class="st-approved">Approved</span>
+          {% elif s.financestatus == 'Rejected' %}<span class="st-rejected">Rejected</span>
+          {% elif s.financestatus == 'Hold' %}<span class="st-hold">Hold</span>
+          {% endif %}
+        </td>
+        <td>{{ s.payableamount|default:0 }}</td>
+        <td>{{ s.paid|default:0 }}</td>
+        <td>{{ s.paidon|date:"d-m-Y" }}</td>
+      </tr>
+      {% endfor %}
+
+      {% endwith %}
+      {% endwith %}
+      {% empty %}
+      <tr>
+        <td colspan="30" style="text-align:center;">No claims found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Floating tooltip for remarks (outside the scrolling table so it is never clipped) -->
+<div id="remark-tooltip" role="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+    var table = document.getElementById('claims-table');
+    var liveRegion = document.getElementById('live-region');
+    var activeRow = null;
+    var COL_WIDTH = 140;
+
+    function announce(msg) {
+      liveRegion.textContent = '';
+      setTimeout(function () { liveRegion.textContent = msg; }, 50);
+    }
+
+    function allRows() {
+      return Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-claim-no]'));
+    }
+
+    function visibleRows() {
+      return allRows().filter(function (r) { return r.style.display !== 'none'; });
+    }
+
+    // ---------------- Clicked row stays highlighted ----------------
+
+    function setActiveRow(row) {
+      if (activeRow === row) return;
+      if (activeRow) activeRow.classList.remove('row-active');
+      activeRow = row || null;
+      if (activeRow) activeRow.classList.add('row-active');
+    }
+
+    table.addEventListener('click', function (e) {
+      var tr = e.target.closest ? e.target.closest('tr') : null;
+      if (tr && tr.dataset.claimNo !== undefined && tr.parentElement.tagName === 'TBODY') {
+        setActiveRow(tr);
+      }
+    });
+
+    // ---------------- Remarks hover tooltip ----------------
+
+    var tip = document.getElementById('remark-tooltip');
+
+    function showTip(icon) {
+      tip.textContent = icon.getAttribute('data-remark') || '';
+      tip.style.display = 'block';
+
+      var r = icon.getBoundingClientRect();
+      var tw = tip.offsetWidth, th = tip.offsetHeight;
+
+      var left = r.left + r.width / 2 - tw / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+
+      var top = r.bottom + 8;
+      if (top + th > window.innerHeight - 8) top = r.top - th - 8;   // flip above if no room
+
+      tip.style.left = left + 'px';
+      tip.style.top = Math.max(8, top) + 'px';
+    }
+
+    function hideTip() { tip.style.display = 'none'; }
+
+    table.addEventListener('mouseover', function (e) {
+      var icon = e.target.closest ? e.target.closest('.remark-info') : null;
+      if (icon) showTip(icon);
+    });
+    table.addEventListener('mouseout', function (e) {
+      if (e.target.closest && e.target.closest('.remark-info')) hideTip();
+    });
+    table.addEventListener('focusin', function (e) {
+      var icon = e.target.closest ? e.target.closest('.remark-info') : null;
+      if (icon) showTip(icon);
+    });
+    table.addEventListener('focusout', hideTip);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideTip(); });
+    document.querySelector('.table-container').addEventListener('scroll', hideTip);
+    window.addEventListener('scroll', hideTip, true);
+
+    // ---------------- Search: username + claim number ----------------
+
+    var usernameInput = document.getElementById('username-input');
+    var claimInput = document.getElementById('claim-input');
+
+    function applyFilters() {
+      var username = usernameInput.value.trim().toLowerCase();
+      var claim = claimInput.value.trim().toLowerCase();
+      var shown = 0;
+
+      allRows().forEach(function (row) {
+        var rowUsername = (row.dataset.username || '').trim().toLowerCase();
+        var nameMatch = rowUsername.startsWith(username) ||
+                        (username.length >= 3 && rowUsername.includes(username));
+        var claimMatch = !claim || (row.dataset.claimNo || '').toLowerCase().indexOf(claim) !== -1;
+
+        var show = nameMatch && claimMatch;
+        row.style.display = show ? '' : 'none';
+        if (show) shown += 1;
+      });
+      return shown;
+    }
+
+    function searchAndAnnounce() {
+      var shown = applyFilters();
+      announce(shown + ' claim' + (shown === 1 ? '' : 's') + ' shown.');
+    }
+
+    usernameInput.addEventListener('input', searchAndAnnounce);
+    claimInput.addEventListener('input', searchAndAnnounce);
+    document.getElementById('search-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      searchAndAnnounce();
+    });
+
+    // ---------------- Column toggle ----------------
+
+    var LOCKED_COLUMNS = [0];   // ClaimNo always stays visible
+    var headerCells = table.querySelectorAll('thead th');
+    var toggleList = document.getElementById('col-toggle-list');
+    var columnDetails = document.getElementById('column-toggle');
+
+    function updateTableWidth() {
+      var width = 0;
+      headerCells.forEach(function (th) {
+        if (th.style.display !== 'none') width += COL_WIDTH;
+      });
+      table.style.width = width + 'px';
+      table.style.minWidth = '100%';
+    }
+
+    function setColumnVisible(idx, visible) {
+      table.querySelectorAll('tr').forEach(function (tr) {
+        var cell = tr.children[idx];
+        if (cell && !cell.hasAttribute('colspan')) cell.style.display = visible ? '' : 'none';
+      });
+      updateTableWidth();
+    }
+
+    updateTableWidth();
+
+    headerCells.forEach(function (th, idx) {
+      if (LOCKED_COLUMNS.indexOf(idx) !== -1) return;
+
+      var id = 'col-toggle-' + idx;
+      var wrap = document.createElement('div');
+      wrap.className = 'form-check';
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'form-check-input';
+      cb.id = id;
+      cb.dataset.col = idx;
+      cb.checked = true;
+
+      var lb = document.createElement('label');
+      lb.className = 'form-check-label';
+      lb.htmlFor = id;
+      lb.textContent = th.textContent.trim();
+
+      cb.addEventListener('change', function () {
+        setColumnVisible(idx, cb.checked);
+        announce(lb.textContent + ' column ' + (cb.checked ? 'shown' : 'hidden') + '.');
+      });
+
+      wrap.appendChild(cb);
+      wrap.appendChild(lb);
+      toggleList.appendChild(wrap);
+    });
+
+    document.getElementById('cols-show-all').addEventListener('click', function () {
+      toggleList.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        cb.checked = true;
+        setColumnVisible(parseInt(cb.dataset.col, 10), true);
+      });
+      announce('All columns shown.');
+    });
+
+    columnDetails.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && columnDetails.open) {
+        columnDetails.open = false;
+        columnDetails.querySelector('summary').focus();
+      }
+    });
+    document.addEventListener('click', function (e) {
+      if (columnDetails.open && !columnDetails.contains(e.target)) columnDetails.open = false;
+    });
+
+    // ---------------- Excel export (visible rows and columns) ----------------
+
+    document.getElementById('download-excel-btn').addEventListener('click', function () {
+      if (typeof XLSX === 'undefined') {
+        announce('Excel export is unavailable because the export library did not load.');
+        return;
+      }
+
+      var headers = [];
+      headerCells.forEach(function (th) {
+        if (th.style.display === 'none') return;
+        headers.push(th.textContent.trim());
+      });
+
+      var data = [headers];
+      visibleRows().forEach(function (row) {
+        var rowData = [];
+        Array.prototype.forEach.call(row.children, function (td) {
+          if (td.style.display === 'none') return;
+          var info = td.querySelector('.remark-info');
+          rowData.push(info ? info.getAttribute('data-remark') : td.textContent.trim());
+        });
+        data.push(rowData);
+      });
+
+      var worksheet = XLSX.utils.aoa_to_sheet(data);
+      var workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'ExpenseClaims');
+      XLSX.writeFile(workbook, 'expense_claims.xlsx');
+      announce('Excel file downloaded with ' + (data.length - 1) + ' rows.');
+    });
+  });
+</script>
+{% endblock %}
