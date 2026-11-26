@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+<div class="col-12 offset-md-2">
+  <br></br>
+  <br></br>
+
+  <h4 style="display: flex; justify-content: space-between;">
+    <span style="margin-right: auto;">ClaimNumber: {{ parentclaimdata.ClaimNumber }}</span>
+    <span style="padding-right: 300px;">AssociateName: {{ parentclaimdata.user.first_name }}</span>
+</h4>
+
+{% if excel_file_url %}
+<div class="col-10 mt-3">
+    <div class="card-header">Attached Excel File</div>
+    <div class="card-body">
+        <a href="{{ excel_file_url }}" class="btn btn-success btn-sm" download>
+            <i class="fa fa-file-excel"></i> {{ excel_file_name }}
+        </a>
+
+        <button type="button" id="viewExcelBtn" class="btn btn-primary btn-sm ms-1 ml-1"
+                data-url="{{ excel_file_url }}" data-name="{{ excel_file_name }}">
+            <i class="fa fa-eye"></i> View
+        </button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+document.getElementById('viewExcelBtn').addEventListener('click', async function () {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Open the tab immediately (inside the click) so the browser does not block it
+    const w = window.open('', '_blank');
+    w.document.write('<p style="font-family:sans-serif">Loading...</p>');
+
+    try {
+        const res = await fetch(this.dataset.url, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const wb = XLSX.read(await res.arrayBuffer(), { type: 'array' });
+
+        let html = '<title>' + esc(this.dataset.name) + '</title>' +
+            '<style>' +
+            'body{font-family:sans-serif;font-size:13px;padding:20px}' +
+            'table{border-collapse:collapse;margin-bottom:30px}' +
+            'td,th{border:1px solid #999;padding:4px 8px;white-space:nowrap}' +
+            '</style>' +
+            '<h3>' + esc(this.dataset.name) + '</h3>';
+
+        wb.SheetNames.forEach(function (n) {
+            html += '<h4>' + esc(n) + '</h4>' + XLSX.utils.sheet_to_html(wb.Sheets[n]);
+        });
+
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    } catch (e) {
+        w.document.body.innerHTML = 'Could not open the Excel file.';
+    }
+});
+</script>
+{% endif %}
+
+{% if accountscomments %}
+<div class="col-10">
+  
+          <div class="card-header">AccountsComments</div>
+          <div class="card-body">{{ accountscomments }}</div>
+      
+</div>
+{% endif %}
+{% if commentskip %}
+<div class="col-10">
+  
+          <div class="card-header">Team Lead Comments</div>
+          <div class="card-body">{{ commentskip }}</div>
+      
+</div>
+{% endif %}
+  <div class="row">
+    <div class="col-10">
+      {% for m in childclaimdata %}
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card-header">ReceiptNumber</div>
+              <div class="card-body">{{ m.ReceiptNumber }}</div>
+              <div class="card-header">ReceiptDate</div>
+              <div class="card-body">{{ m.ReceiptDate }}</div>
+              <div class="card-header">ExpenseHead</div>
+              <div class="card-body">{{ m.ExpenseHead }}</div>
+              <div class="card-header">ClaimAmount</div>
+              <div class="card-body">{{ m.ClaimAmount }}</div>
+              <div class="card-header">Remarks</div>
+              <div class="card-body">{{ m.Remarks }}</div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-2">
+                  {% if m.BillAttachment %}
+                      {% if m.BillAttachment.name|slice:"-4:" == ".pdf" %}
+           
+                          <iframe src="{{ m.BillAttachment.url }}" class="pdf-viewer" width="150%" height="600" frameborder="0" allowfullscreen></iframe>
+             
+                      {% else %}
+                          <a href="{{ m.BillAttachment.url }}" target="_blank" class="small-font">
+                              <img src="{{ m.BillAttachment.url }}" alt="Bill Image" class="img-fluid" width="700" height="1400">
+                          </a>
+                      {% endif %}
+                  {% else %}
+                      No Bill Attachment
+                  {% endif %}
+              </div>
+          </div>          
+                  
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="col-md-6">
+        <div class="card-header">TotalClaimAmount</div>
+        <div class="card-body">{{ total_claim_amount }}</div>
+      </div>
+
+  
+  {% if is_rejected %}
+  <div class="offset-md-6">
+  <button type="button" id="edit-button" class="btn btn-primary">Edit</button>
+  </div>
+ 
+  <div class="offset-md-6">
+    <button type="submit" name="action" value="submit" class="btn btn-primary">Submit</button>
+   
+  </div>
+  {% endif %}
+     
+</form>
+
+
+<style>
+  .status-dropdown {
+    width: 150px;
+  }
+
+  .comments-div {
+    display: none;
+    width: 400px;
+
+  }
+
+  .comments-div input[type="text"] {
+    width: 100%;
+    height: 5px;
+  }
+</style>
+{% if not is_custom %}
+<form method="post" action="{% url 'review_claim' parentclaimdata.ClaimNumber %}" onsubmit="disableButton(event)">
+  {% csrf_token %}
+
+  <div class="form-group">
+    <div class="d-flex align-items-center">
+      <select name="status" class="form-control mr-2 status-dropdown" required>  
+        <option value="" selected="selected">SELECT</option>   
+        <option value="Approved" {% if n.claimstatus_set.first.accountstatus == 'Approved' %} selected="selected" {% endif %}>Approved</option>
+        <option value="Rejected" {% if n.claimstatus_set.first.accountstatus == 'Rejected' %} selected="selected" {% endif %}>Rejected</option>
+      </select>
+      <div>
+      <div class="comments-div">
+        <textarea name="comments" class="form-control" placeholder="Enter comments" rows="1" required></textarea>
+      </div>
+    </div>
+    <div class="col-6">
+      <button type="submit" class="btn btn-primary" id="submit-btn-{{ parentclaimdata.ClaimNumber }}">Submit</button>
+    </div>
+    </div>
+  </div>
+  <br>
+</form>
+{% endif %}
+
+<style>
+  #go-back-button {
+    position: fixed;
+    bottom: 40px; /* Adjust the value to control the vertical position */
+    right: 20px; /* Adjust the value to control the horizontal position */
+    z-index: 1; /* Make sure it's above other content */
+  }
+</style>
+  
+  <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+
+
+{% for status in n.claimstatus_set.all %}
+<input type="text" name="accountstatus" class="form-control" value="{{ status.accountstatus }}" readonly>
+<input type="text" name="accountscomments" class="form-control" value="{{ status.accountscomments }}" readonly>          
+{% endfor %}
+
+{% for status in n.claimstatus_set.all %}
+  {{ status.paymentstatus }} 
+{% endfor %}
+
+<script>
+  function disableButton(event) {
+    var button = document.getElementById("submit-btn-{{ n.ClaimNumber }}");
+    button.disabled = true;
+    button.innerHTML = "Processing...";
+  }
+
+  function toggleComments() {
+    var statusDropdowns = document.querySelectorAll(".status-dropdown");
+    var commentsDivs = document.querySelectorAll(".comments-div");
+
+    // Loop through all status dropdowns and show the corresponding comments div
+    statusDropdowns.forEach(function (dropdown, index) {
+      if (dropdown.value === "Rejected") {
+        commentsDivs[index].style.display = "block";
+      } else {
+        commentsDivs[index].style.display = "block"; // Always show the comments div
+      }
+    });
+  }
+
+  // Attach an event listener to all status dropdowns to toggle comments visibility
+  var statusDropdowns = document.querySelectorAll(".status-dropdown");
+  statusDropdowns.forEach(function (dropdown) {
+    dropdown.addEventListener("change", toggleComments);
+  });
+
+  // Initialize the visibility based on the initial selections
+  toggleComments();
+
+  function goBack() {
+      window.history.back();
+  }
+</script>
+
+{% endblock %}

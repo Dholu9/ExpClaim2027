@@ -1,0 +1,57 @@
+{% load static %}
+<link rel="icon" href="{% static 'logo.jpg' %}">
+<div class="col-10 offset-md-2">
+  <br>
+  <br>
+  <img src="{% static 'logo.jpg' %}" class="img-fluid" alt="" width="100%">
+  <h2>ClaimReport</h2>
+  <table>
+    <thead style="background-color: rgb(207, 219, 224);">
+      <tr>
+        <th scope="col">Claim Number</th>
+        <th scope="col">Date of Approval</th>
+        <th scope="col">Associate Name</th>
+        <th scope="col">DT Number</th>      
+        <th scope="col">Expense Details</th>
+        <th scope="col">Department</th>
+        <th scope="col">Manager</th>
+        <th scope="col">TotalClaimAmount</th>
+       
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for claim in selected_claims %}
+      <tr style="background-color: rgb(239, 244, 247);">
+        <td>{{ claim.ClaimNumber }}</td>
+        <td>{{ claim.StatusDate|date:"d-m-Y" }}</td>
+        <td>{{ claim.user.first_name }}</td>
+        <td>{{ claim.user.last_name }}</td>    
+        <td>{{ claim.ExpenseDetails }}</td>
+        <td>{{ claim.Department }}</td>
+        <td>{{ claim.Manager }}</td>
+        {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == claim.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+          {% endif %}
+      {% endfor %}
+     
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7">No selected claims found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+<style>
+  #go-back-button {
+    position: fixed;
+    bottom: 20px; /* Adjust the value to control the vertical position */
+    right: 20px; /* Adjust the value to control the horizontal position */
+    z-index: 1; /* Make sure it's above other content */
+  }
+

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<body>
+    <h2>Upload Excel File</h2>
+    <div class="col-12 offset-md-3">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="excel_file">Choose Excel File:</label>
+        <input type="file" name="excel_file" required>
+        <button type="submit">Upload</button>
+    </form>
+</div>
+</body>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+<div class="col-10 offset-md-2">
+  <br></br>
+  <br></br>
+
+  <h4 style="display: flex; justify-content: space-between;">
+    <span style="margin-right: auto;">ClaimNumber: {{ parentclaimdata.ClaimNumber }}</span>
+    <span style="padding-right: 300px;">AssociateName: {{ parentclaimdata.user.first_name }}</span>
+</h4>
+
+
+  <div class="row">
+    <div class="col-10">
+      {% for m in childclaimdata %}
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card-header">ReceiptNumber</div>
+              <div class="card-body">{{ m.ReceiptNumber }}</div>
+              <div class="card-header">ReceiptDate</div>
+              <div class="card-body">{{ m.ReceiptDate }}</div>
+              <div class="card-header">ExpenseHead</div>
+              <div class="card-body">{{ m.ExpenseHead }}</div>
+              <div class="card-header">ClaimAmount</div>
+              <div class="card-body">{{ m.ClaimAmount }}</div>
+              <div class="card-header">Remarks</div>
+              <div class="card-body">{{ m.Remarks }}</div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-2">
+                  {% if m.BillAttachment %}
+                      {% if m.BillAttachment.name|slice:"-4:" == ".pdf" %}
+           
+                          <iframe src="{{ m.BillAttachment.url }}" class="pdf-viewer" width="150%" height="600" frameborder="0" allowfullscreen></iframe>
+             
+                      {% else %}
+                          <a href="{{ m.BillAttachment.url }}" target="_blank" class="small-font">
+                              <img src="{{ m.BillAttachment.url }}" alt="Bill Image" class="img-fluid" width="700" height="1400">
+                          </a>
+                      {% endif %}
+                  {% else %}
+                      No Bill Attachment
+                  {% endif %}
+              </div>
+          </div>          
+                  
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="col-md-6">
+        <div class="card-header">TotalClaimAmount</div>
+        <div class="card-body">{{ total_claim_amount }}</div>
+      </div>
+      {% if not is_custom3 %}
+      <form method="post" action="{% url 'managementreview' parentclaimdata.ClaimNumber %}">
+        {% csrf_token %}
+        <label for="ClaimReview" class="form-label"></label>
+        <div class="form-group">
+          <div class="d-flex align-items-center">
+            <div class="col-4">
+              <select name="managementstatus" class="form-control mr-2 managementstatus-dropdown" required>
+                <option value="" selected>SELECT</option>
+                <option value="Approved" {% if n.claimstatus_set.first.managementstatus == 'Approved' %} selected="selected" {% endif %}>Approved</option>
+                <option value="Rejected" {% if n.claimstatus_set.first.managementstatus == 'Rejected' %} selected="selected" {% endif %}>Rejected</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <div class="managementcomments-div">
+                <textarea name="managementcomments" class="form-control" placeholder="Enter comments" rows="1"></textarea>
+              </div>
+            </div>
+            <button type="submit" value="managementstatus" class="btn btn-primary" id="submit-btn-{{ parentclaimdata.ClaimNumber }}">Submit</button>
+          </div>
+        </div>
+      </form>
+      {% endif %}
+      <form action="{% url 'download_claim_files' parentclaimdata.ClaimNumber %}" method="post" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Download All Bills</button>
+    </form>
+      
+      <style>
+        #go-back-button {
+          position: fixed;
+          bottom: 10px; /* Adjust the value to control the vertical position */
+          right: 20px; /* Adjust the value to control the horizontal position */
+          z-index: 1; /* Make sure it's above other content */
+        }
+      </style>
+        
+        <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+    </div>
+  </div>
+</div>
+
+
+  </div>
+ 
+
+  
+<script> 
+  function goBack() {
+    window.history.back();
+}
+</script>
+
+{% endblock %}
+

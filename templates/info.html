@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+{% load custom_tags %}
+
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %} 
+
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 750px;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-right: 2px solid #380a0a;
+  }
+  
+  th {
+    position: sticky;
+    top: 0;
+    background-color: rgb(207, 219, 224);
+    text-align: center;
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  input[type="file"] {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        width: 15%;
+        box-sizing: border-box;
+  }
+  
+  .suggestions {
+          border: 1px solid #ccc;
+          max-height: 150px;
+          overflow-y: auto;
+          position: absolute;
+          z-index: 20;
+          background-color: white;
+          width: 20%;
+      }
+  .suggestion-item {
+          padding: 5px;
+          cursor: pointer;
+      }
+  .suggestion-item:hover {
+          background-color: #f0f0f0;
+      }
+      @media (max-width: 1440px) {
+  td, th {
+    font-size: 10px;
+    padding: 10px;
+  }
+}
+@media (max-width: 320px) {
+  td, th {
+    font-size: 8px;
+    padding: 8px;
+  }
+}
+@media (max-width: 480px) {
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+}
+@media (max-width: 768px) {
+  td, th {
+    font-size: 8px;
+    padding: 12px;
+  }
+}
+.oval {
+  display: inline-block;
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border-radius: 20%;
+  text-align: left;
+  font-size: 12px;
+}
+
+.patch {
+  color: #a83b3b;
+  font-size: x-small;
+  font-weight: bold;
+}
+
+/* ===== One-row upload form ===== */
+.upload-row-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  background: #f9f9f9;
+  padding: 12px 18px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border: 1px solid #d6e2ee;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+}
+.upload-row-form label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+  white-space: nowrap;
+}
+.upload-row-form input[type="date"],
+.upload-row-form input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #a5c9ea;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #eaf6ff;
+  min-width: 160px;
+}
+.upload-row-form input[type="file"] {
+  width: auto;
+  padding: 6px 10px;
+  border: 1px solid #a5c9ea;
+  border-radius: 8px;
+  background: #eaf6ff;
+  font-size: 14px;
+}
+.upload-row-form button[type="submit"],
+.upload-row-form .btn-view-files {
+  padding: 9px 22px;
+  border-radius: 30px;
+  border: none;
+  background: linear-gradient(135deg, #a3cef1, #6699cc);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(75, 110, 146, 0.3);
+  font-size: 14px;
+}
+.upload-row-form button[type="submit"]:hover,
+.upload-row-form .btn-view-files:hover {
+  background: linear-gradient(135deg, #6699cc, #3a5a7a);
+  transform: scale(1.03);
+}
+.upload-row-form .btn-view-files {
+  background: linear-gradient(135deg, #b9d4ea, #7aa6cf);
+}
+.upload-row-form .btn-view-files.active {
+  background: linear-gradient(135deg, #6699cc, #3a5a7a);
+}
+@media (max-width: 768px) {
+  .upload-row-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .upload-row-form input,
+  .upload-row-form button,
+  .upload-row-form .btn-view-files {
+    width: 100%;
+  }
+}
+
+/* ===== Small "Uploaded Files" box ===== */
+.file-list-card {
+  margin: 12px 0 20px 0;
+  max-width: 680px;
+  background: #ffffff;
+  border: 1px solid #d6e2ee;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(75, 110, 146, 0.15);
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+.file-list-header {
+  background: linear-gradient(135deg, #a3cef1, #6699cc);
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.file-list-body {
+  padding: 10px 14px;
+}
+.file-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+.file-list-table th,
+.file-list-table td {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: #2c3e50;
+  text-align: left;
+  border-bottom: 1px solid #eaf1f8;
+  white-space: normal;
+}
+.file-list-table th {
+  background: #eaf3fb;
+  font-weight: 600;
+  position: static;
+}
+.file-list-table a {
+  color: #1f5fa8;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.file-list-table a:hover {
+  color: #0d3b6f;
+}
+.file-list-empty {
+  color: #888;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+</style>
+
+
+<div class="col-9 offset-md-2">
+  {% if messages %}
+  <ul>
+    {% for m in messages %}
+      <li style="color: {% if m.tags == 'error' %}red{% elif m.tags == 'success' %}green{% else %}black{% endif %};">
+        {{ m }}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<!-- ===== Date-based Excel upload (one row) ===== -->
+<h6 style="color: rgb(87, 113, 185);">Upload Field Excel</h6>
+<form id="upload-excel-form" method="post"
+      action="{% url 'upload_excel' %}"
+      enctype="multipart/form-data"
+      class="upload-row-form">
+    {% csrf_token %}
+    <label for="file_date">Date:</label>
+    <input type="date" id="file_date" name="file_date" required>
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description">
+
+    <label for="file">Excel File:</label>
+    <input type="file" id="file" name="file" accept=".xls,.xlsx" required>
+
+    <button type="submit">Upload</button>
+
+    <button type="button" id="btn-view-files" class="btn-view-files"
+            onclick="toggleUploadedFiles()">View Uploaded Files</button>
+</form>
+
+<!-- ===== Small box: uploaded files (hidden by default) ===== -->
+<div id="uploaded-files-box" style="display: none;">
+  <div class="file-list-card">
+    <div class="file-list-header">Uploaded Files</div>
+    <div class="file-list-body">
+      {% if uploaded_files %}
+        <table class="file-list-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in uploaded_files %}
+            <tr>
+              <td>{{ f.file_date }}</td>
+              <td>{{ f.description|default:"—" }}</td>
+              <td>
+                <a href="{% url 'download_file' f.id %}" target="_blank" rel="noopener"
+                   title="{{ f.file.name }}">
+                  {{ f.file.name|cut:"excels/" }}
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="file-list-empty">No files uploaded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+
+<br>
+
+   {% if user.first_name == 'Bharath S R' or user.first_name == 'Sanjay MS'  or user.first_name == 'Anil Kumar' or user.first_name == 'AmitRathor'%}
+
+  <h6 style="color: rgb(87, 113, 185);">Add Users</h6>
+  <form id="upload-form" method="post" enctype="multipart/form-data" onsubmit="handleSubmit(event)">
+      {% csrf_token %}
+      <label for="excel_file">Select Excel file:</label>
+      <input type="file" name="excel_file" id="excel_file" accept=".xlsx, .xls" required>
+      <button type="submit">Upload</button>
+  </form>
+
+  <h6 style="color: rgb(87, 113, 185);">Change User DT Number</h6>
+  <form id="change-last-name-form" method="post" onsubmit="handleChangeLastName(event)">
+      {% csrf_token %}
+      <label for="old_last_name">Current DT Number:</label>
+      <input type="text" name="old_last_name" id="old_last_name" required oninput="fetchLastNameSuggestions()">
+      <div id="suggestions" class="suggestions"></div>
+
+       <label for="new_last_name">New DT Number:</label>
+      <input type="text" name="new_last_name" id="new_last_name" required>
+      <button type="submit">Change DT Number</button>
+  </form>
+  {% endif %} 
+ 
+  {% if user.first_name == 'Prabhakara Reddy G V'  %}
+  <br>
+{% else %}
+<h5>Search by Username</h5>
+<div style="display: flex; align-items: center;">
+<form id="search-form" style="display: flex; align-items: center;" onsubmit="return false;">
+    <input type="text" id="username-input" placeholder="Enter username" style="margin-right: 10px;">
+    <button type="button" id="search-button" style="margin-right: 10px;">Search</button>
+</form>
+<button onclick="window.location.reload();" class="btn btn-danger" style="margin-left: 10px;">Remove Filter</button>
+</div>
+
+<br>
+{% endif %} 
+<br>
+
+    <div class="table-container">
+    <table class="table table-striped">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNo.</th>
+          <th scope="col" style="width: 150px;">SubmitDt.</th>
+          <th scope="col"style="width: 150px;">UserName</th>         
+          <th scope="col">DTNo</th>
+          <th scope="col">Dept</th>
+          <th scope="col">Manager</th>
+          <th scope="col">Project</th>
+          <th scope="col">Sub-Project</th>
+          <th scope="col">ExpDetails</th>
+          <th scope="col">TotalAmt</th>      
+          <th scope="col">Mngr-Status</th>
+          <th scope="col">AccStatus</th>
+       
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for n in parentclaimdata %}
+        
+        <tr style="background-color:rgb(239, 244, 247);">
+          <td>
+            <a href="{% url 'entereddata2' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>  
+         
+          </td>             
+          <td>{{n.DateofSubmission}}</td>
+          <td>{{n.user.first_name}}</td>         
+          <td>{{n.user.last_name}}</td>
+          <td>{{n.Department}}</td>
+          <td>{{n.Manager}}</td>
+          <td>{{n.Project}}</td>
+          <td>{{n.Subproject}}</td>
+          <td>{{n.ExpenseDetails}}</td>         
+            {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == n.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+          {% endif %}
+      {% endfor %}    
+              
+      <td>
+        {% if n.claimstatus_set.all %}
+        {% for status in n.claimstatus_set.all %}
+          {% if status.status == 'Approved' %}
+            <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-success">{{ status.status }}</a>
+          {% elif status.status == 'Rejected' %}
+            <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-danger">{{ status.status }}</a>
+          {% elif status.status == 'ReSubmitted' %}
+          <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">{{ status.status }}</a>
+          {% else %}
+          <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+        {% endfor %}
+        {% else %}
+        <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+      {% endif %}
+     </td>          
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.accountstatus == 'Approved' %}
+            <span style="color: rgb(18, 185, 68);">{{ status.accountstatus }}</span>
+            {% elif status.accountstatus == 'Rejected' %}
+            <span style="color: red;">{{ status.accountstatus }}</span>
+            {% else %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>
+            {% endif %}
+            {% empty %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>                   
+            {% endfor %}
+          </td>
+        
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+</div>
+<script>
+  // ===== Toggle the "Uploaded Files" box =====
+  function toggleUploadedFiles() {
+    var box = document.getElementById('uploaded-files-box');
+    var btn = document.getElementById('btn-view-files');
+    if (!box || !btn) return;
+
+    if (box.style.display === 'none' || box.style.display === '') {
+      box.style.display = 'block';
+      btn.textContent = 'Hide Uploaded Files';
+      btn.classList.add('active');
+    } else {
+      box.style.display = 'none';
+      btn.textContent = 'View Uploaded Files';
+      btn.classList.remove('active');
+    }
+  }
+
+  // JavaScript to handle the search functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    var searchButton = document.getElementById('search-button');
+    var usernameInput = document.getElementById('username-input');
+
+    function performSearch() {
+        var username = usernameInput.value.trim().toLowerCase();
+        var tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(function(row) {
+            var usernameCell = row.querySelector('td:nth-child(3)');
+            var rowUsername = usernameCell.textContent.trim().toLowerCase();
+            if (rowUsername.startsWith(username) || (username.length >= 3 && rowUsername.includes(username))) {
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    usernameInput.addEventListener('keypress', function(event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            performSearch();
+        }
+    });
+
+    searchButton.addEventListener('click', performSearch);
+});
+function handleSubmit(event) {
+      event.preventDefault();
+      const formData = new FormData(document.getElementById('upload-form'));
+      fetch("{% url 'upload_users' %}", {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              alert(`${data.count} users added successfully!`);
+          } else if (data.duplicates) {
+              alert(`Duplicate usernames found: ${data.duplicates.join(", ")}. Please change these usernames.`);
+          } else {
+              alert(data.message || "An error occurred.");
+          }
+      })
+      .catch(error => { alert(`An error occurred: ${error}`); });
+  }
+
+  function handleChangeLastName(event) {
+      event.preventDefault();
+      const formData = new FormData(document.getElementById('change-last-name-form'));
+      fetch("{% url 'change_last_name' %}", {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+      })
+      .then(response => response.json())
+      .then(data => { alert(data.message); })
+      .catch(error => { alert(`An error occurred: ${error}`); });
+  }
+
+  function fetchLastNameSuggestions() {
+      const input = document.getElementById('old_last_name');
+      const query = input.value.toLowerCase();
+      const suggestionsContainer = document.getElementById('suggestions');
+      suggestionsContainer.innerHTML = '';
+      const lastNames = {{ last_names|safe }};
+      const filteredLastNames = lastNames.filter(lastName => lastName.toLowerCase().includes(query));
+      filteredLastNames.forEach(name => {
+          const div = document.createElement('div');
+          div.className = 'suggestion-item';
+          div.textContent = name;
+          div.onclick = () => {
+              input.value = name;
+              suggestionsContainer.innerHTML = '';
+          };
+          suggestionsContainer.appendChild(div);
+      });
+  }
+
+  document.getElementById('search-button').addEventListener('click', function() {
+              var username = document.getElementById('username-input').value;
+              var tableRows = document.querySelectorAll('tbody tr');
+              tableRows.forEach(function(row) {
+                  var usernameCell = row.querySelector('td:nth-child(3)');
+                  if (usernameCell.textContent === username) {
+                      row.style.display = 'table-row';
+                  } else {
+                      row.style.display = 'none';
+                  }
+              });
+          });
+
+document.getElementById('username-input').addEventListener('input', filterTable);
+document.getElementById('search-button').addEventListener('click', filterTable);
+document.getElementById('search-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    filterTable();
+});
+
+function filterTable() {
+    var username = document.getElementById('username-input').value.toLowerCase();
+    var tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(function(row) {
+        var usernameCell = row.querySelector('td:nth-child(3)');
+        if (usernameCell.textContent.toLowerCase().includes(username)) {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+  </script>
+
+{% endblock %}

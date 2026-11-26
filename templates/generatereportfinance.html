@@ -1,0 +1,1295 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+
+<style>
+  /* ===== Claims table: wide columns, horizontal scroll at the end of the table ===== */
+  .table-container {
+    width: 100%;
+    height: 380px;               /* <-- change this value to make the table taller or shorter */
+    overflow-x: auto;            /* horizontal scrollbar stays visible at the bottom of the box */
+    overflow-y: auto;            /* rows scroll inside the box */
+    margin: 0;
+    box-sizing: border-box;
+    border: 1px solid #cfd8e3;
+  }
+
+  /* Scoped to the claims table only */
+  .claims-table {
+    width: max-content;          /* grow to fit all 27 columns */
+    min-width: 100%;             /* never narrower than the container */
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+
+  .claims-table td,
+  .claims-table th {
+    min-width: 150px;
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .claims-table td {
+    color: rgb(74, 75, 71);
+    border-right: 2px solid #380a0a;
+  }
+
+  .claims-table th {
+    position: sticky;            /* header stays visible while rows scroll */
+    top: 0;
+    z-index: 10;
+    background-color: rgb(207, 219, 224);
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+  }
+
+  /* Column widths */
+  .claims-table th:nth-child(10), .claims-table td:nth-child(10) { min-width: 280px; } /* ExpDetails */
+  .claims-table th:nth-child(3),  .claims-table td:nth-child(3)  { min-width: 170px; } /* ApprovedBy */
+  .claims-table th:nth-child(11), .claims-table td:nth-child(11),
+  .claims-table th:nth-child(12), .claims-table td:nth-child(12),
+  .claims-table th:nth-child(13), .claims-table td:nth-child(13),
+  .claims-table th:nth-child(20), .claims-table td:nth-child(20),
+  .claims-table th:nth-child(21), .claims-table td:nth-child(21),
+  .claims-table th:nth-child(25), .claims-table td:nth-child(25) { min-width: 170px; } /* amount columns */
+
+  /* Remarks columns: small and fixed (HRRemarks = 14, FinanceRemarks = 23) */
+  .claims-table th:nth-child(14), .claims-table td:nth-child(14),
+  .claims-table th:nth-child(23), .claims-table td:nth-child(23) {
+    min-width: 170px;
+    max-width: 170px;
+  }
+
+  .remarks-text {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #6699cc;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    font-style: italic;
+    font-family: Georgia, serif;
+    cursor: help;
+    vertical-align: middle;
+    user-select: none;
+  }
+  .info-icon:hover { background: #3a5a7a; }
+
+  /* Floating tooltip (appended to <body> by the script, so table cells never clip it) */
+  #remarks-tooltip {
+    position: fixed;
+    z-index: 3000;
+    max-width: 320px;
+    padding: 10px 12px;
+    background: #2c3e50;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .claims-table td, .claims-table th { font-size: 12px; padding: 10px; }
+  }
+
+  /* ===== Buttons ===== */
+  .btn {
+    color: #4b6e92;
+    background: linear-gradient(135deg, #a3cef1, #6699cc);
+    border: none;
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(75, 110, 146, 0.3);
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn:hover, .btn:focus {
+    background: linear-gradient(135deg, #6699cc, #3a5a7a);
+    color: #e0ebff;
+    box-shadow: 0 6px 10px rgba(75, 110, 146, 0.6);
+    transform: scale(1.05);
+  }
+
+  .btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 3px 6px rgba(75, 110, 146, 0.8);
+  }
+
+  .btn:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ===== Bank details modals ===== */
+  #bankDetailsModal .modal-dialog { max-width: 50%; }
+  #bulkBankModal .modal-dialog { max-width: 560px; }
+
+  @media (max-width: 768px) {
+    #bankDetailsModal .modal-dialog { max-width: 95%; }
+    #bulkBankModal .modal-dialog { max-width: 95%; }
+  }
+
+  .bulk-errors {
+    max-height: 150px;
+    overflow: auto;
+    font-size: 13px;
+    color: #b00020;
+    border: 1px solid #f0c8cf;
+    background: #fff6f7;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  /* ===== Name autocomplete ===== */
+  .suggestion-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .suggestion-box[hidden] { display: none; }
+  .suggestion-box li {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+    color: #2c3e50;
+  }
+  .suggestion-box li:hover,
+  .suggestion-box li.active { background: #eaf6ff; }
+  .suggestion-box li.empty { color: #888; cursor: default; }
+  .suggestion-box li.error { color: #b00020; cursor: default; }
+  .suggestion-box .muted { color: #888; font-size: 12px; margin-left: 6px; }
+
+  #go-back-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1;
+  }
+
+  /* ===== Download-by-date card ===== */
+  .download-card {
+    background: #ffffff;
+    border: 1px solid #d6e2ee;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(75, 110, 146, 0.15);
+    padding: 0;
+    margin: 0;
+  }
+  .download-card-header {
+    background: linear-gradient(135deg, #a3cef1, #6699cc);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px 10px 0 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-align: center;
+  }
+  .download-card-body {
+    padding: 16px 18px;
+  }
+  .download-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .download-card-row label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+  }
+  .download-card-row input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #a5c9ea;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #eaf6ff;
+    min-width: 150px;
+  }
+  #download-status {
+    font-size: 13px;
+    min-height: 18px;
+    margin-bottom: 6px;
+  }
+  #download-results {
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  #download-results table {
+    table-layout: auto;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #download-results th,
+  #download-results td {
+    border: 1px solid #cfd8e3 !important;
+    padding: 8px 10px !important;
+    font-size: 13px;
+    color: #2c3e50;
+    text-align: left;
+    white-space: normal;
+  }
+  #download-results th {
+    background: #eaf3fb;
+    position: static;
+  }
+  .dl-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #6bbf7a, #3a8f4c);
+    color: #fff !important;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(58, 143, 76, 0.4);
+  }
+  .dl-btn:hover {
+    background: linear-gradient(135deg, #3a8f4c, #256532);
+    color: #fff !important;
+  }
+
+  /* ===== View Files button + side panel ===== */
+  .view-files-btn {
+    background: linear-gradient(135deg, #b9d4ea, #7aa6cf);
+    color: #fff;
+  }
+  .view-files-btn.active {
+    background: linear-gradient(135deg, #6699cc, #3a5a7a);
+  }
+  .uploaded-files-panel {
+    background: #ffffff;
+    border: 1px solid #d6e2ee;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(75, 110, 146, 0.15);
+    width: 420px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    max-height: 420px;
+    overflow: hidden;
+  }
+  .uploaded-files-panel-header {
+    background: linear-gradient(135deg, #a3cef1, #6699cc);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px 10px 0 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .uploaded-files-panel-header .close-x {
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .uploaded-files-panel-body {
+    padding: 10px 14px;
+    overflow-y: auto;
+  }
+  .uploaded-files-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+  }
+  .uploaded-files-table th,
+  .uploaded-files-table td {
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #2c3e50;
+    text-align: left;
+    border-bottom: 1px solid #eaf1f8;
+    white-space: normal;
+    vertical-align: top;
+  }
+  .uploaded-files-table th {
+    background: #eaf3fb;
+    font-weight: 600;
+    position: static;
+  }
+  .uploaded-files-table a {
+    color: #1f5fa8;
+    text-decoration: underline;
+    word-break: break-all;
+  }
+  .uploaded-files-table a:hover {
+    color: #0d3b6f;
+  }
+  .uploaded-files-empty {
+    color: #888;
+    font-size: 13px;
+    padding: 8px 0;
+    text-align: center;
+  }
+
+  /* Layout: card on left, panel on right */
+  .download-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin: 10px 0 20px 0;
+  }
+</style>
+
+<!-- ===== Download Excel by Date + View Uploaded Files side panel ===== -->
+<div class="download-row">
+
+  <!-- LEFT: Download card -->
+  <div class="download-card" style="width: 420px; max-width: 100%;">
+    <div class="download-card-header">Download Field Excel by Date</div>
+    <div class="download-card-body">
+      <div class="download-card-row" style="justify-content: center;">
+        <label for="download-date-input">Select Date:</label>
+        <input type="date" id="download-date-input" name="download_date" style="min-width: 150px;" />
+      </div>
+      <div class="download-card-row" style="justify-content: center;">
+        <button type="button" class="btn" onclick="searchExcelByDate()">Search</button>
+        <button type="button" class="btn" onclick="clearExcelSearch()">Clear</button>
+        <button type="button" class="btn view-files-btn" id="btn-view-files"
+                onclick="toggleUploadedFilesPanel()">View Uploaded Files</button>
+      </div>
+      <div id="download-status" style="text-align: center;"></div>
+      <div id="download-results"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Hidden panel with all uploaded files -->
+  <div id="uploaded-files-panel" class="uploaded-files-panel" style="display: none;">
+    <div class="uploaded-files-panel-header">
+      <span>Uploaded Files</span>
+      <span class="close-x" onclick="toggleUploadedFilesPanel()" title="Close">✕</span>
+    </div>
+    <div class="uploaded-files-panel-body">
+      {% if uploaded_files %}
+        <table class="uploaded-files-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in uploaded_files %}
+            <tr>
+              <td>{{ f.file_date }}</td>
+              <td>{{ f.description|default:"—" }}</td>
+              <td>
+                <a href="{% url 'download_file' f.id %}" target="_blank" rel="noopener"
+                   title="{{ f.file.name }}">
+                  {{ f.file.name|cut:"excels/" }}
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="uploaded-files-empty">No files uploaded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<div class="col-12 col-md-10 offset-md-2">
+  <form method="post" id="date-range-form" action="#"
+    style="
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 20px;
+      background: #f9f9f9;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    ">
+
+    {% csrf_token %}
+
+    <!-- YEAR -->
+    <select name="year" id="year" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 110px;">
+      <option value="">Select Year</option>
+      <option value="2026" {% if request.POST.year == "2026" %}selected{% endif %}>2026</option>
+      <option value="2025" {% if request.POST.year == "2025" %}selected{% endif %}>2025</option>
+      <option value="2024" {% if request.POST.year == "2024" %}selected{% endif %}>2024</option>
+      <option value="2023" {% if request.POST.year == "2023" %}selected{% endif %}>2023</option>
+    </select>
+
+    <!-- MONTH -->
+    <select name="month" id="month" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 130px;">
+      <option value="">Select Month</option>
+      <option value="01" {% if request.POST.month == "01" %}selected{% endif %}>January</option>
+      <option value="02" {% if request.POST.month == "02" %}selected{% endif %}>February</option>
+      <option value="03" {% if request.POST.month == "03" %}selected{% endif %}>March</option>
+      <option value="04" {% if request.POST.month == "04" %}selected{% endif %}>April</option>
+      <option value="05" {% if request.POST.month == "05" %}selected{% endif %}>May</option>
+      <option value="06" {% if request.POST.month == "06" %}selected{% endif %}>June</option>
+      <option value="07" {% if request.POST.month == "07" %}selected{% endif %}>July</option>
+      <option value="08" {% if request.POST.month == "08" %}selected{% endif %}>August</option>
+      <option value="09" {% if request.POST.month == "09" %}selected{% endif %}>September</option>
+      <option value="10" {% if request.POST.month == "10" %}selected{% endif %}>October</option>
+      <option value="11" {% if request.POST.month == "11" %}selected{% endif %}>November</option>
+      <option value="12" {% if request.POST.month == "12" %}selected{% endif %}>December</option>
+    </select>
+
+    <!-- FROM DATE -->
+    <label style="font-weight: bold; color: #2c3e50;">From Date:</label>
+    <input type="date" id="startdate" name="startdate"
+           value="{{ request.POST.startdate|default_if_none:'' }}"
+           style="padding: 10px 14px; border: 1px solid #a5c9ea; border-radius: 8px; font-size: 14px; min-width: 160px; background-color: #eaf6ff;" />
+
+    <!-- TO DATE -->
+    <label style="font-weight: bold; color: #2c3e50;">To Date:</label>
+    <input type="date" id="enddate" name="enddate"
+           value="{{ request.POST.enddate|default_if_none:'' }}"
+           style="padding: 10px 14px; border: 1px solid #a5c9ea; border-radius: 8px; font-size: 14px; min-width: 160px; background-color: #eaf6ff;" />
+
+    <!-- PROJECT -->
+    <select id="project_name" name="project_name" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+      <option value="">All Projects</option>
+      {% for project in projects %}
+        <option value="{{ project.project_title }}"
+          {% if request.POST.project_name == project.project_title %}selected{% endif %}>
+          {{ project.project_title }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <!-- NAME (autocomplete) -->
+    <div style="position: relative;">
+      <input type="text" id="name-input" name="user_name" autocomplete="off"
+        placeholder="Name"
+        value="{{ request.POST.user_name|default:'' }}"
+        style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+      <input type="hidden" id="user-id" name="user_id" value="{{ request.POST.user_id|default:'' }}">
+      <ul id="name-suggestions" class="suggestion-box" hidden></ul>
+    </div>
+
+    <!-- BUTTON ROW -->
+    <div style="width:100%; display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
+      <button type="submit" class="btn">Filter</button>
+      <button type="button" onclick="clearForm()" class="btn">Clear</button>
+      <button type="button" onclick="downloadExcel()" class="btn">Download Excel</button>
+      <button type="button" id="download-vouchers-btn" class="btn btn-warning">Download Vouchers</button>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankDetailsModal">Update Bank Details</button>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bulkBankModal">Bulk Upload Bank Details</button>
+    </div>
+  </form>
+
+  <!-- BANK DETAILS MODAL -->
+  <div class="modal fade" id="bankDetailsModal" tabindex="-1" aria-labelledby="bankDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="bankDetailsModalLabel">Update Bank Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">DT Number</label>
+            <input type="text" id="dtnumber" class="form-control" list="dtNumberList"
+                   placeholder="Enter DT Number" value="{{ profile.dtnumber }}">
+            <datalist id="dtNumberList">
+              {% for dt in dt_numbers %}
+                <option value="{{ dt }}">
+              {% endfor %}
+            </datalist>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Name as per Bank</label>
+            <input type="text" id="nameasperbank" class="form-control" value="{{ profile.nameasperbank }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Bank Name</label>
+            <input type="text" id="bankname" class="form-control" value="{{ profile.bankname }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Account Number</label>
+            <input type="text" id="accountnumber" class="form-control" value="{{ profile.accountnumber }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">IFSC Code</label>
+            <input type="text" id="ifsccode" class="form-control" value="{{ profile.ifsccode }}">
+          </div>
+
+          <div id="message"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" id="updateBtn" class="btn btn-primary">Update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK BANK DETAILS MODAL -->
+  <div class="modal fade" id="bulkBankModal" tabindex="-1" aria-labelledby="bulkBankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="bulkBankModalLabel">Bulk Upload Bank Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <p class="mb-2">
+            Columns: <b>DT Number, Name as per Bank, Bank Name, Account Number, IFSC Code</b>.<br>
+            If a DT number already exists, its bank details are replaced with the new ones.
+          </p>
+
+          <a href="{% url 'download_bank_template' %}" class="btn btn-sm btn-success mb-3">Download Excel Format</a>
+
+          <input type="file" id="bulkBankFile" class="form-control" accept=".xlsx">
+
+          <div id="bulkBankMessage" class="mt-3"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" id="bulkBankUploadBtn" class="btn btn-primary">Upload</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="table table-striped claims-table">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNo</th>
+          <th scope="col">ApprovedDt.</th>
+          <th scope="col">ApprovedBy</th>
+          <th scope="col">UserName</th>
+          <th scope="col">DTNo</th>
+          <th scope="col">Project</th>
+          <th scope="col">Sub-Project</th>
+          <th scope="col">Dept</th>
+          <th scope="col">Manager</th>
+          <th scope="col">ExpDetails</th>
+          <th scope="col">TotalClaimAmt</th>
+          <th scope="col">HoldAmountHR</th>
+          <th scope="col">RejectedAmountHR</th>
+          <th scope="col">AdvanceDeduct</th>
+          <th scope="col">HRRemarks</th>
+          <th scope="col">HRStatus</th>
+          <th scope="col">Appr.Amt</th>
+          <th scope="col">NatureOfExpense</th>
+          <th scope="col">AccountingLocation</th>
+          <th scope="col">WorkingLocation</th>
+          <th scope="col">HoldAmountFinance</th>
+          <th scope="col">HoldReleaseAmt</th>
+          <th scope="col">RejectedAmt</th>
+          <th scope="col">FinanceRemarks</th>
+          <th scope="col">FinanceStatus</th>
+          <th scope="col">PayableAmt</th>
+          <th scope="col">Paid</th>
+          <th scope="col">PaidDate</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for n in monthdata %}
+        {% with n.claimstatus_set.first as status %}
+        {% with n.child_models.first as child %}
+
+          {# One row per claim. All finance values come from ClaimStatus. #}
+          <tr style="background-color:rgb(239, 244, 247);">
+            <td><a href="{% url 'entereddata3' n.ClaimNumber %}">{{ n.ClaimNumber }}</a></td>
+            <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+            <td>{{ status.approvedby|default_if_none:"" }}</td>
+            <td>{{ n.user.first_name }}</td>
+            <td>{{ n.DTNumber }}</td>
+            <td>{{ n.Project }}</td>
+            <td>{{ n.Subproject }}</td>
+            <td>{{ n.Department }}</td>
+            <td>{{ n.Manager }}</td>
+            <td>{{ n.ExpenseDetails }}</td>
+            <td class="num">{{ child.TotalClaimAmount|default:0 }}</td>
+            <td class="num">{{ status.holdamounthr|default:0 }}</td>
+            <td class="num">{{ status.rejectamounthr|default:0 }}</td>
+            <td class="num">{{ status.advancededuct|default:0 }}</td>
+            <td>
+              {% if status.accountscomments %}<span class="info-icon" data-full="{{ status.accountscomments }}">i</span>{% endif %}
+              <span class="remarks-text">{{ status.accountscomments|default_if_none:"" }}</span>
+            </td>
+            <td>
+              {% if status.accountstatus == 'Approved' %}
+                <span class="st-approved">Reviewed</span>
+              {% else %}
+                <span class="st-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ status.approvedamount|default:0 }}</td>
+            <td>{{ status.NatureOfExpense|default_if_none:"" }}</td>
+            <td>{{ status.AccountingLocation|default_if_none:"" }}</td>
+            <td>{{ status.WorkingLocation|default_if_none:"" }}</td>
+            <td class="num">{{ status.holdamountfin|default:0 }}</td>
+            <td class="num">{{ status.releasehold|default:0 }}</td>
+            <td class="num">{{ status.rejectamountfin|default:0 }}</td>
+            <td>
+              {% if status.financecomments %}<span class="info-icon" data-full="{{ status.financecomments }}">i</span>{% endif %}
+              <span class="remarks-text">{{ status.financecomments|default_if_none:"" }}</span>
+            </td>
+            <td>
+              {% if status.financestatus == 'Approved' %}
+                <span class="st-approved">Approved</span>
+              {% elif status.financestatus == 'Rejected' %}
+                <span class="st-rejected">Rejected</span>
+              {% elif status.financestatus == 'Hold' %}
+                <span class="st-hold">Hold</span>
+              {% else %}
+                <span class="st-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ status.payableamount|default:0 }}</td>
+            <td class="num">{{ status.paid|default:0 }}</td>
+            <td>{{ status.paidon|date:"M. d, Y" }}</td>
+          </tr>
+
+        {% endwith %}
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="27" class="text-center">No claims found for the selected filters.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  #go-back-button {
+    position: fixed;
+    bottom: 10px;
+    right: 20px;
+    z-index: 1;
+  }
+</style>
+
+<button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+<script>
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+function goBack() {
+  window.history.back();
+}
+
+function clearForm() {
+  var form = document.getElementById('date-range-form');
+  if (form) form.reset();
+  if (window.flatpickr && flatpickr.instances && flatpickr.instances.length) {
+    flatpickr.instances.forEach(function (fp) { fp.clear(); });
+  }
+  window.location.href = "{% url 'generatereportfinance' %}";
+}
+
+/* -------------------------------------------------------------------------
+   Build one query string from ALL filters (incl. name).
+   Only filters that have a value are sent, so name alone, or name together
+   with any other filter, both work.
+   ------------------------------------------------------------------------- */
+function getFilterQuery() {
+  var params = new URLSearchParams();
+  var fields = {
+    year:         'year',
+    month:        'month',
+    startdate:    'startdate',
+    enddate:      'enddate',
+    project_name: 'project_name',
+    user_id:      'user-id',
+    user_name:    'name-input'
+  };
+
+  Object.keys(fields).forEach(function (key) {
+    var el  = document.getElementById(fields[key]);
+    var val = el ? (el.value || '').trim() : '';
+    if (val) params.append(key, val);
+  });
+  return params.toString();
+}
+
+function downloadExcel() {
+  window.location.href = "{% url 'download_excel_latest' %}?" + getFilterQuery();
+}
+
+function downloadVouchers() {
+  window.location.href = "{% url 'download_vouchers_latest' %}?" + getFilterQuery();
+}
+
+/* =========================================================================
+   VIEW UPLOADED FILES (side panel toggle)
+   ========================================================================= */
+function toggleUploadedFilesPanel() {
+  var panel = document.getElementById('uploaded-files-panel');
+  var btn = document.getElementById('btn-view-files');
+  if (!panel || !btn) return;
+
+  if (panel.style.display === 'none' || panel.style.display === '') {
+    panel.style.display = 'flex';
+    btn.classList.add('active');
+    btn.textContent = 'Hide Uploaded Files';
+  } else {
+    panel.style.display = 'none';
+    btn.classList.remove('active');
+    btn.textContent = 'View Uploaded Files';
+  }
+}
+
+/* =========================================================================
+   DOWNLOAD EXCEL BY DATE  (fetch → render → download)
+   ========================================================================= */
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderExcelResults(items, dateStr) {
+  var container = document.getElementById('download-results');
+  if (!container) return;
+
+  if (!items || !items.length) {
+    container.innerHTML =
+      '<div style="color:#a83b3b; font-weight:bold; padding:8px 0; text-align:center;">' +
+      'No Excel file found for ' + escapeHtml(dateStr) + '.</div>';
+    return;
+  }
+
+  var html = '<table><thead><tr>' +
+    '<th>Date</th><th>File Name</th><th>Description</th><th>Uploaded</th><th>Download</th>' +
+    '</tr></thead><tbody>';
+
+  items.forEach(function (f) {
+    html += '<tr>' +
+      '<td>' + escapeHtml(f.file_date) + '</td>' +
+      '<td>' + escapeHtml(f.file_name) + '</td>' +
+      '<td>' + escapeHtml(f.description || '—') + '</td>' +
+      '<td>' + escapeHtml(f.uploaded_at) + '</td>' +
+      '<td><a class="dl-btn" href="' + f.download_url + '">Download</a></td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function searchExcelByDate() {
+  var dateInput = document.getElementById('download-date-input');
+  var statusBox = document.getElementById('download-status');
+  var resultsBox = document.getElementById('download-results');
+
+  var dateVal = (dateInput.value || '').trim();
+  if (!dateVal) {
+    statusBox.style.color = '#a83b3b';
+    statusBox.textContent = 'Please select a date first.';
+    resultsBox.innerHTML = '';
+    return;
+  }
+
+  statusBox.style.color = '#2c3e50';
+  statusBox.textContent = 'Searching…';
+  resultsBox.innerHTML = '';
+
+  var url = "{% url 'search_excel_by_date' %}" +
+            '?date=' + encodeURIComponent(dateVal);
+
+  fetch(url, {
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(function (res) {
+    return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+  })
+  .then(function (r) {
+    if (!r.ok || !r.data.success) {
+      statusBox.style.color = '#a83b3b';
+      statusBox.textContent = (r.data && r.data.message) || 'Search failed.';
+      return;
+    }
+    var items = r.data.files || [];
+    if (items.length) {
+      statusBox.style.color = '#1a7a3c';
+      statusBox.textContent = 'Found ' + items.length + ' file(s) for ' + dateVal + '.';
+    } else {
+      statusBox.style.color = '#a83b3b';
+      statusBox.textContent = 'No file uploaded for ' + dateVal + '.';
+    }
+    renderExcelResults(items, dateVal);
+  })
+  .catch(function (err) {
+    statusBox.style.color = '#a83b3b';
+    statusBox.textContent = 'Error: ' + err;
+  });
+}
+
+function clearExcelSearch() {
+  document.getElementById('download-date-input').value = '';
+  document.getElementById('download-status').textContent = '';
+  document.getElementById('download-results').innerHTML = '';
+}
+
+/* =========================================================================
+   NAME AUTOCOMPLETE (only if its inputs exist on the page)
+   ========================================================================= */
+function initNameAutocomplete() {
+  var input  = document.getElementById('name-input');
+  var hidden = document.getElementById('user-id');
+  var box    = document.getElementById('name-suggestions');
+  if (!input || !hidden || !box) return;
+
+  var timer = null, controller = null, items = [], activeIndex = -1;
+
+  function hideBox() {
+    box.hidden = true;
+    box.innerHTML = '';
+    items = [];
+    activeIndex = -1;
+  }
+
+  // The dropdown may SHOW the merged "first last" name, but the filter must use
+  // ONLY the first name, because the UserName column = user.first_name.
+  function getUserName(item) {
+    if (item.first_name) return String(item.first_name).trim();
+    return String(item.name || '').trim();   // fallback if backend sends no first_name
+  }
+
+  function choose(item) {
+    input.value  = getUserName(item);   // first name only -> sent as user_name
+    hidden.value = item.id;             // exact user -> sent as user_id
+    hideBox();
+  }
+
+  function setActive(i) {
+    var lis = box.querySelectorAll('li');
+    lis.forEach(function (li) { li.classList.remove('active'); });
+    activeIndex = i;
+    if (lis[i]) {
+      lis[i].classList.add('active');
+      lis[i].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function showMessage(text, cls) {
+    box.innerHTML = '';
+    items = [];
+    activeIndex = -1;
+    var li = document.createElement('li');
+    li.className = cls;
+    li.textContent = text;
+    box.appendChild(li);
+    box.hidden = false;
+  }
+
+  function render(results) {
+    if (!results.length) {
+      showMessage('No matches', 'empty');
+      return;
+    }
+    box.innerHTML = '';
+    items = results;
+    activeIndex = -1;
+    results.forEach(function (item) {
+      var li = document.createElement('li');
+      li.textContent = item.name;
+      if (item.dt) {
+        var span = document.createElement('span');
+        span.className = 'muted';
+        span.textContent = item.dt;
+        li.appendChild(span);
+      }
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();   // keep focus in the input
+        choose(item);
+      });
+      box.appendChild(li);
+    });
+    box.hidden = false;
+  }
+
+  async function fetchSuggestions(q) {
+    if (controller) controller.abort();
+    controller = new AbortController();
+    try {
+      var res = await fetch("{% url 'user_suggestions' %}?q=" + encodeURIComponent(q), {
+        signal: controller.signal,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      render(data.results || []);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Suggestion fetch failed:', err);
+      showMessage('Could not load suggestions', 'error');
+    }
+  }
+
+  input.addEventListener('input', function () {
+    hidden.value = '';                 // typing again invalidates the earlier pick
+    clearTimeout(timer);
+    var q = input.value.trim();
+    if (q.length < 2) { hideBox(); return; }
+    timer = setTimeout(function () { fetchSuggestions(q); }, 250);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (box.hidden || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive((activeIndex + 1) % items.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((activeIndex - 1 + items.length) % items.length);
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();              // pick the suggestion instead of submitting
+      choose(items[activeIndex]);
+    } else if (e.key === 'Escape') {
+      hideBox();
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    if (e.target !== input && !box.contains(e.target)) hideBox();
+  });
+}
+
+/* =========================================================================
+   BANK DETAILS UPDATE (only if the modal/button exist)
+   ========================================================================= */
+function initBankDetailsUpdate() {
+  var updateBtn = document.getElementById('updateBtn');
+  if (!updateBtn) return;
+
+  updateBtn.addEventListener('click', function () {
+    var csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    var csrfToken = csrfInput ? csrfInput.value : '';
+
+    fetch("{% url 'update_bank_details' %}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        nameasperbank: document.getElementById('nameasperbank').value,
+        dtnumber:      document.getElementById('dtnumber').value,
+        bankname:      document.getElementById('bankname').value,
+        accountnumber: document.getElementById('accountnumber').value,
+        ifsccode:      document.getElementById('ifsccode').value
+      })
+    })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      var message = document.getElementById('message');
+      if (data.status === 'success') {
+        message.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+        setTimeout(function () {
+          var modalElement = document.getElementById('bankDetailsModal');
+          var modal = bootstrap.Modal.getInstance(modalElement);
+          if (modal) modal.hide();
+          message.innerHTML = '';
+        }, 1500);
+      } else {
+        message.innerHTML = '<div class="alert alert-danger">Something went wrong.</div>';
+      }
+    })
+    .catch(function (error) {
+      document.getElementById('message').innerHTML =
+        '<div class="alert alert-danger">Error: ' + error + '</div>';
+      console.error(error);
+    });
+  });
+}
+
+/* =========================================================================
+   BULK BANK DETAILS UPLOAD (Excel)
+   ========================================================================= */
+function initBulkBankUpload() {
+  var btn = document.getElementById('bulkBankUploadBtn');
+  if (!btn) return;
+
+  var modalEl = document.getElementById('bulkBankModal');
+  var fileInput = document.getElementById('bulkBankFile');
+  var msg = document.getElementById('bulkBankMessage');
+
+  // Reset the modal each time it is closed
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      fileInput.value = '';
+      msg.innerHTML = '';
+    });
+  }
+
+  btn.addEventListener('click', function () {
+    if (!fileInput.files.length) {
+      msg.innerHTML = '<div class="alert alert-warning">Please choose an .xlsx file.</div>';
+      return;
+    }
+
+    var csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    var fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+
+    btn.disabled = true;
+    msg.innerHTML = '<div class="text-muted">Uploading…</div>';
+
+    fetch("{% url 'bulk_update_bank_details' %}", {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': csrfInput ? csrfInput.value : '' },  // no Content-Type: browser sets it
+      body: fd
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var cls = data.status === 'success' ? 'alert-success' : 'alert-danger';
+      var html = '<div class="alert ' + cls + '">' + escapeHtml(data.message) + '</div>';
+      if (data.errors && data.errors.length) {
+        html += '<div class="bulk-errors">' +
+                data.errors.map(escapeHtml).join('<br>') + '</div>';
+      }
+      msg.innerHTML = html;
+    })
+    .catch(function (err) {
+      msg.innerHTML = '<div class="alert alert-danger">Error: ' + escapeHtml(err) + '</div>';
+    })
+    .finally(function () { btn.disabled = false; });
+  });
+}
+
+/* =========================================================================
+   REMARKS INFO ICON: full text on hover (click also works on touch screens)
+   ========================================================================= */
+function initRemarksTooltip() {
+  var tip = document.createElement('div');
+  tip.id = 'remarks-tooltip';
+  document.body.appendChild(tip);
+
+  function showTip(icon) {
+    tip.textContent = icon.getAttribute('data-full') || '';
+    tip.style.display = 'block';
+    var r = icon.getBoundingClientRect();
+    var left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 10);
+    var top  = r.bottom + 6;
+    if (top + tip.offsetHeight > window.innerHeight) top = r.top - tip.offsetHeight - 6;
+    tip.style.left = Math.max(10, left) + 'px';
+    tip.style.top  = Math.max(10, top) + 'px';
+  }
+  function hideTip() { tip.style.display = 'none'; }
+
+  document.addEventListener('mouseover', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) showTip(e.target);
+  });
+  document.addEventListener('mouseout', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) hideTip();
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.classList && e.target.classList.contains('info-icon')) showTip(e.target);
+    else hideTip();
+  });
+  window.addEventListener('scroll', hideTip, true);
+}
+
+/* =========================================================================
+   MAIN
+   ========================================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+
+  initNameAutocomplete();
+  initBankDetailsUpdate();
+  initBulkBankUpload();
+  initRemarksTooltip();
+
+  /* ---- Let Enter key trigger Search inside the download date box ---- */
+  var downloadDateInput = document.getElementById('download-date-input');
+  if (downloadDateInput) {
+    downloadDateInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); searchExcelByDate(); }
+    });
+  }
+
+  /* ---- MONTH requires YEAR (single handler) ---- */
+  var monthSelect = document.getElementById('month');
+  if (monthSelect) {
+    monthSelect.addEventListener('change', function () {
+      if (document.getElementById('year').value === '') {
+        alert('Please select a year first!');
+        this.value = '';
+      }
+    });
+  }
+
+  /* ---- Select all shown checkbox (this page has none by default, guard anyway) ---- */
+  var selectAllCheckbox = document.getElementById('select-all-checkbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', function () {
+      document.querySelectorAll('.claim-checkbox').forEach(function (cb) {
+        cb.checked = selectAllCheckbox.checked;
+      });
+    });
+  }
+
+  /* ---- Download Vouchers button (guarded) ---- */
+  var vouchersBtn = document.getElementById('download-vouchers-btn');
+  if (vouchersBtn) {
+    vouchersBtn.addEventListener('click', downloadVouchers);
+  }
+
+  /* ---- Username search (only if #username-input exists on this page) ---- */
+  var usernameInput = document.getElementById('username-input');
+  if (usernameInput) {
+    usernameInput.addEventListener('input', function () {
+      var q = usernameInput.value.trim().toLowerCase();
+      document.querySelectorAll('tbody tr').forEach(function (row) {
+        var cell = row.querySelector('td:nth-child(3)');
+        if (!cell) return;
+        var name = cell.textContent.trim().toLowerCase();
+        row.style.display =
+          (name.indexOf(q) === 0 || (q.length >= 3 && name.indexOf(q) !== -1))
+            ? 'table-row' : 'none';
+      });
+    });
+  }
+
+  /* ---- Project filter button (only if #project-button exists) ---- */
+  var projectBtn = document.getElementById('project-button');
+  if (projectBtn) {
+    projectBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      var filter = (document.getElementById('project_name').value || '').trim().toLowerCase();
+      document.querySelectorAll('tbody tr').forEach(function (row) {
+        var cell = row.querySelector('td:nth-child(7)');
+        if (!cell) return;
+        var ok = filter === '' || cell.textContent.toLowerCase().indexOf(filter) !== -1;
+        row.style.display = ok ? 'table-row' : 'none';
+      });
+    });
+  }
+
+  /* ---- Date+name+project filter button (only if #filter-button exists) ---- */
+  var filterBtn = document.getElementById('filter-button');
+  if (filterBtn) {
+    filterBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+
+      var startEl = document.getElementById('startdate') || document.getElementById('start-date');
+      var endEl   = document.getElementById('enddate')   || document.getElementById('end-date');
+      if (!startEl || !endEl) return;
+
+      var startDate = new Date(startEl.value);
+      var endDate   = new Date(endEl.value);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      var usernameFilter = (document.getElementById('username-input') || {value: ''}).value.trim().toLowerCase();
+      var projectFilter  = (document.getElementById('project_name').value || '').trim().toLowerCase();
+
+      document.querySelectorAll('tbody tr').forEach(function (row) {
+        var dateCell = row.querySelector('td:nth-child(2)');
+        var userCell = row.querySelector('td:nth-child(3)');
+        var projCell = row.querySelector('td:nth-child(7)');
+        if (!dateCell || !userCell || !projCell) return;
+
+        var parts = dateCell.textContent.split('-');
+        var claimDate = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+        claimDate.setHours(0, 0, 0, 0);
+
+        var dateMatch    = claimDate >= startDate && claimDate <= endDate;
+        var userMatch    = userCell.textContent.toLowerCase().indexOf(usernameFilter) !== -1;
+        var projectMatch = projCell.textContent.toLowerCase().indexOf(projectFilter) !== -1;
+
+        row.style.display = (dateMatch && userMatch && projectMatch) ? 'table-row' : 'none';
+      });
+    });
+  }
+
+  /* ---- Select-all for project filter (only if the checkbox exists) ---- */
+  var selectAllProject = document.getElementById('select-all-checkboxproject');
+  if (selectAllProject) {
+    selectAllProject.addEventListener('change', function () {
+      document.querySelectorAll('tbody tr').forEach(function (row) {
+        if (row.style.display === 'none') return;
+        var cb = row.querySelector('.claim-checkbox');
+        if (cb) cb.checked = selectAllProject.checked;
+      });
+    });
+  }
+});
+</script>
+
+{% endblock %}

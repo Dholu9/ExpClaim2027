@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}User Claims{% endblock %}
+{% block content %}
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 750px;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-right: 2px solid #380a0a;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background-color: rgb(207, 219, 224);
+    text-align: center;
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  @media (max-width: 1440px) {
+    td, th { font-size: 10px; padding: 10px; }
+  }
+  @media (max-width: 320px) {
+    td, th { font-size: 8px; padding: 8px; }
+  }
+  @media (max-width: 480px) {
+    td, th { font-size: 8px; padding: 10px; }
+  }
+  @media (max-width: 768px) {
+    td, th { font-size: 8px; padding: 12px; }
+  }
+
+  .btn {
+    color: #4b6e92;
+    background: linear-gradient(135deg, #a3cef1, #6699cc);
+    border: none;
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(75, 110, 146, 0.3);
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn:hover, .btn:focus {
+    background: linear-gradient(135deg, #6699cc, #3a5a7a);
+    color: #e0ebff;
+    box-shadow: 0 6px 10px rgba(75, 110, 146, 0.6);
+    transform: scale(1.05);
+  }
+
+  .btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 3px 6px rgba(75, 110, 146, 0.8);
+  }
+
+  .btn:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ---------- Name autocomplete ---------- */
+  .suggestion-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .suggestion-box[hidden] { display: none; }
+  .suggestion-box li {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+    color: #2c3e50;
+  }
+  .suggestion-box li:hover,
+  .suggestion-box li.active { background: #eaf6ff; }
+  .suggestion-box li.empty { color: #888; cursor: default; }
+  .suggestion-box li.error { color: #b00020; cursor: default; }
+  .suggestion-box .muted { color: #888; font-size: 12px; margin-left: 6px; }
+
+  #go-back-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1;
+  }
+</style>
+
+<br>
+<div class="col-10 offset-md-2">
+
+  <form method="post" id="date-range-form" action="#"
+    style="
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 20px;
+      background: #f9f9f9;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    ">
+
+    {% csrf_token %}
+
+    <!-- YEAR -->
+    <select name="year" id="year" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 110px;">
+      <option value="">Select Year</option>
+      <option value="2026" {% if request.POST.year == "2026" %}selected{% endif %}>2026</option>
+      <option value="2025" {% if request.POST.year == "2025" %}selected{% endif %}>2025</option>
+      <option value="2024" {% if request.POST.year == "2024" %}selected{% endif %}>2024</option>
+      <option value="2023" {% if request.POST.year == "2023" %}selected{% endif %}>2023</option>
+    </select>
+
+    <!-- MONTH -->
+    <select name="month" id="month" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 130px;">
+      <option value="">Select Month</option>
+      <option value="01" {% if request.POST.month == "01" %}selected{% endif %}>January</option>
+      <option value="02" {% if request.POST.month == "02" %}selected{% endif %}>February</option>
+      <option value="03" {% if request.POST.month == "03" %}selected{% endif %}>March</option>
+      <option value="04" {% if request.POST.month == "04" %}selected{% endif %}>April</option>
+      <option value="05" {% if request.POST.month == "05" %}selected{% endif %}>May</option>
+      <option value="06" {% if request.POST.month == "06" %}selected{% endif %}>June</option>
+      <option value="07" {% if request.POST.month == "07" %}selected{% endif %}>July</option>
+      <option value="08" {% if request.POST.month == "08" %}selected{% endif %}>August</option>
+      <option value="09" {% if request.POST.month == "09" %}selected{% endif %}>September</option>
+      <option value="10" {% if request.POST.month == "10" %}selected{% endif %}>October</option>
+      <option value="11" {% if request.POST.month == "11" %}selected{% endif %}>November</option>
+      <option value="12" {% if request.POST.month == "12" %}selected{% endif %}>December</option>
+    </select>
+
+    <!-- FROM DATE -->
+    <label style="font-weight: bold; color: #2c3e50;">From Date:</label>
+    <input type="date" id="startdate" name="startdate"
+      value="{{ request.POST.startdate|default_if_none:'' }}"
+      style="padding: 10px 14px; border: 1px solid #a5c9ea; border-radius: 8px; font-size: 14px; min-width: 160px; background-color: #eaf6ff;" />
+
+    <!-- TO DATE -->
+    <label style="font-weight: bold; color: #2c3e50;">To Date:</label>
+    <input type="date" id="enddate" name="enddate"
+      value="{{ request.POST.enddate|default_if_none:'' }}"
+      style="padding: 10px 14px; border: 1px solid #a5c9ea; border-radius: 8px; font-size: 14px; min-width: 160px; background-color: #eaf6ff;" />
+
+    <!-- PROJECT -->
+    <select id="project_name" name="project_name" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+      <option value="">All Projects</option>
+      {% for project in projects %}
+        <option value="{{ project.project_title }}"
+          {% if request.POST.project_name == project.project_title %}selected{% endif %}>
+          {{ project.project_title }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <!-- NAME (autocomplete) -->
+    <div style="position: relative;">
+      <input type="text" id="name-input" name="user_name" autocomplete="off"
+        placeholder="Name"
+        value="{{ request.POST.user_name|default:'' }}"
+        style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 180px;">
+      <input type="hidden" id="user-id" name="user_id" value="{{ request.POST.user_id|default:'' }}">
+      <ul id="name-suggestions" class="suggestion-box" hidden></ul>
+    </div>
+
+    <!-- BUTTON ROW -->
+    <div style="width:100%; display:flex; gap:10px; margin-top:10px;">
+      <button type="submit" class="btn">Filter</button>
+      <button type="button" onclick="clearForm()" class="btn">Clear</button>
+      <button type="button" onclick="downloadExcel(this)" class="btn">Download Excel</button>
+      <button type="button" onclick="downloadVouchers(this)" class="btn btn-warning">Download Vouchers</button>
+    </div>
+
+  </form>
+
+  <br>
+
+  <table class="table table-striped">
+    <thead style="background-color:rgb(207, 219, 224);">
+      <tr>
+        <th scope="col">ClaimNumber</th>
+        <th scope="col">DateofApproval</th>
+        <th scope="col">Associate Name</th>
+        <th scope="col">DTNumber</th>
+        <th scope="col">Department</th>
+        <th scope="col">Manager</th>
+        <th scope="col">Project</th>
+        <th scope="col">Sub-Project</th>
+        <th scope="col">ExpenseDetails</th>
+        <th scope="col">TotalClaimAmount</th>
+        <th scope="col">ApprovedAmount</th>
+        <th scope="col">AccountStatus</th>
+        <th scope="col">Payment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in monthdata %}
+        <tr style="background-color:rgb(239, 244, 247);">
+          <td>
+            <a href="{% url 'entereddata3' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+          </td>
+          <td>{{ n.StatusDate|date:"d-m-Y" }}</td>
+          <td>{{ n.user.first_name }}</td>
+          <td>{{ n.user.last_name }}</td>
+          <td>{{ n.Department }}</td>
+          <td>{{ n.Manager }}</td>
+          <td>{{ n.Project }}</td>
+          <td>{{ n.Subproject }}</td>
+          <td>{{ n.ExpenseDetails }}</td>
+          {% for claim_number, claim_total in total_claim_amounts %}
+            {% if claim_number == n.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+            {% endif %}
+          {% endfor %}
+          {% for status in n.claimstatus_set.all %}
+            <td>{{ status.approvedamount }}</td>
+          {% endfor %}
+          <td>
+            {% for status in n.claimstatus_set.all %}
+              {% if status.accountstatus == 'Approved' %}
+                <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-success">{{ status.accountstatus }}</a>
+              {% elif status.accountstatus == 'Rejected' %}
+                <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-danger">{{ status.accountstatus }}</a>
+              {% else %}
+                <a href="{% url 'entereddata3' n.ClaimNumber %}" class="text-warning">Pending</a>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td>
+            {% for status in n.claimstatus_set.all %}
+              {% if status.paymentstatus == 'PaymentDone' %}
+                <span style="color: rgb(18, 185, 68);">{{ status.paymentstatus }}</span>
+              {% else %}
+                <span style="color: rgb(104, 97, 93);">Pending</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+        </tr>
+      {% empty %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+
+<button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+
+<script>
+/* =========================================================
+   Name autocomplete
+   ========================================================= */
+function initNameAutocomplete() {
+  var input  = document.getElementById('name-input');
+  var hidden = document.getElementById('user-id');
+  var box    = document.getElementById('name-suggestions');
+  if (!input || !hidden || !box) return;
+
+  var timer = null, controller = null, items = [], activeIndex = -1;
+
+  function hideBox() {
+    box.hidden = true;
+    box.innerHTML = '';
+    items = [];
+    activeIndex = -1;
+  }
+
+  function choose(item) {
+    input.value  = item.name;
+    hidden.value = item.id;
+    hideBox();
+  }
+
+  function setActive(i) {
+    var lis = box.querySelectorAll('li');
+    lis.forEach(function (li) { li.classList.remove('active'); });
+    activeIndex = i;
+    if (lis[i]) {
+      lis[i].classList.add('active');
+      lis[i].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function showMessage(text, cls) {
+    box.innerHTML = '';
+    items = [];
+    activeIndex = -1;
+    var li = document.createElement('li');
+    li.className = cls;
+    li.textContent = text;
+    box.appendChild(li);
+    box.hidden = false;
+  }
+
+  function render(results) {
+    if (!results.length) {
+      showMessage('No matches', 'empty');
+      return;
+    }
+    box.innerHTML = '';
+    items = results;
+    activeIndex = -1;
+
+    results.forEach(function (item) {
+      var li = document.createElement('li');
+      li.textContent = item.name;
+      if (item.dt) {
+        var span = document.createElement('span');
+        span.className = 'muted';
+        span.textContent = item.dt;
+        li.appendChild(span);
+      }
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();   // keep focus in the input
+        choose(item);
+      });
+      box.appendChild(li);
+    });
+    box.hidden = false;
+  }
+
+  async function fetchSuggestions(q) {
+    if (controller) controller.abort();
+    controller = new AbortController();
+    try {
+      var res = await fetch("{% url 'user_suggestions' %}?q=" + encodeURIComponent(q), {
+        signal: controller.signal,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      render(data.results || []);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('Suggestion fetch failed:', err);
+      showMessage('Could not load suggestions', 'error');
+    }
+  }
+
+  input.addEventListener('input', function () {
+    hidden.value = '';                 // typing again invalidates the earlier pick
+    clearTimeout(timer);
+    var q = input.value.trim();
+    if (q.length < 2) { hideBox(); return; }
+    timer = setTimeout(function () { fetchSuggestions(q); }, 250);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (box.hidden || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive((activeIndex + 1) % items.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((activeIndex - 1 + items.length) % items.length);
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();              // pick the suggestion instead of submitting
+      choose(items[activeIndex]);
+    } else if (e.key === 'Escape') {
+      hideBox();
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    if (e.target !== input && !box.contains(e.target)) hideBox();
+  });
+}
+
+/* =========================================================
+   Form helpers
+   ========================================================= */
+function clearForm() {
+  document.getElementById('date-range-form').reset();
+  window.location.href = "{% url 'generatereportoptimized' %}";
+}
+
+function goBack() {
+  window.history.back();
+}
+
+/* =========================================================
+   Downloads: fully backend-driven (no dependency on the table)
+   ========================================================= */
+function getFilterParams() {
+  var fd = new FormData(document.getElementById('date-range-form'));
+  var params = new URLSearchParams();
+  ['year', 'month', 'startdate', 'enddate', 'project_name', 'user_id', 'user_name']
+    .forEach(function (k) { params.append(k, fd.get(k) || ''); });
+  return params;
+}
+
+async function downloadFromBackend(url, fallbackName, btn) {
+  var originalText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing...'; }
+
+  try {
+    var response = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+      },
+      body: getFilterParams()
+    });
+
+    if (!response.ok) {
+      var msg = await response.text();
+      throw new Error(msg || response.statusText);
+    }
+
+    var filename = fallbackName;
+    var disposition = response.headers.get('Content-Disposition') || '';
+    var match = disposition.match(/filename="?([^";]+)"?/i);
+    if (match) filename = match[1];
+
+    var blob = await response.blob();
+    var objUrl = window.URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(objUrl);
+  } catch (err) {
+    console.error('Download failed:', err);
+    var text = (err.message && err.message.length < 200) ? err.message : 'Download failed. Please try again.';
+    alert(text);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+
+function downloadExcel(btn) {
+  downloadFromBackend("{% url 'generate_excel' %}", 'claims.xlsx', btn);
+}
+
+function downloadVouchers(btn) {
+  downloadFromBackend("{% url 'download_vouchers' %}", 'Vouchers.zip', btn);
+}
+
+/* =========================================================
+   Page init
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+  initNameAutocomplete();
+
+  // Month requires year
+  var monthSelect = document.getElementById('month');
+  if (monthSelect) {
+    monthSelect.addEventListener('change', function () {
+      if (document.getElementById('year').value === '') {
+        alert('Please select a year first!');
+        this.value = '';
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %} 
+<style>
+   @media (max-width: 1440px) {
+  /* Adjust styles for small MacBooks (13-inch models) */
+  td, th {
+    font-size: 10px; /* Reduce font size for smaller screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+@media (max-width: 320px) {
+  td, th {
+    font-size: 8px; /* Smaller font size for very small screens */
+    padding: 8px; /* Reduce padding to fit content */
+  }
+}
+
+/* Adjustments for mobile phones (portrait mode) */
+@media (max-width: 480px) {
+  td, th {
+    font-size: 8px; /* Slightly larger than for small screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+
+/* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+@media (max-width: 768px) {
+  td, th {
+    font-size: 8px; /* Larger font size for larger mobile screens */
+    padding: 12px; /* Standard padding for slightly bigger screens */
+  }
+}
+
+</style>
+<div class="col-12 offset-md-2">
+    <br></br>
+    <br></br>
+    
+  
+
+    <h5>Search by Username</h5>
+
+    <!-- Add a form to input the username -->
+    <form id="search-form">
+        <input type="text" id="username-input" placeholder="Enter username">
+        <button type="button" id="search-button">Search</button>
+    </form>
+    <br>
+    
+    <table class="table table-striped">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNumber</th>
+          <th scope="col">DateofSubmission</th>
+          <th scope="col">AssociateName</th>         
+          <th scope="col">DTNumber</th>
+          <th scope="col">Department</th>
+          <th scope="col">Manager</th>
+          <th scope="col">ExpenseDetails</th>
+          <th scope="col">TotalClaimAmount</th>
+          <th scope="col">Status</th>
+          <th scope="col">AccountStatus</th>
+          <th scope="col">Payment</th>
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for n in parentclaimdata %}
+        
+        <tr style="background-color:rgb(239, 244, 247);">
+          <td>
+            <a href="{% url 'entereddatacustom' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+          </td>        
+          <td>{{n.DateofSubmission}}</td>
+          <td>{{n.user.first_name}}</td>         
+          <td>{{n.user.last_name}}</td>
+          <td>{{n.Department}}</td>
+          <td>{{n.Manager}}</td>
+          <td>{{n.ExpenseDetails}}</td>
+         
+            {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == n.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+          {% endif %}
+      {% endfor %}
+     
+          
+          <td>
+            {% if n.claimstatus_set.all %}
+            {% for status in n.claimstatus_set.all %}
+              {% if status.status == 'Approved' %}
+                <a href="{% url 'entereddatacustom' n.ClaimNumber %}" class="text-success">{{ status.status }}</a>
+              {% elif status.status == 'Rejected' %}
+                <a href="{% url 'entereddatacustom' n.ClaimNumber %}" class="text-danger">{{ status.status }}</a>
+              {% elif status.status == 'ReSubmitted' %}
+              <a href="{% url 'entereddatacustom' n.ClaimNumber %}" class="text-warning">{{ status.status }}</a>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <a href="{% url 'entereddatacustom' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+         </td>
+          
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.accountstatus == 'Approved' %}
+            <span style="color: rgb(18, 185, 68);">{{ status.accountstatus }}</span>
+            {% elif status.accountstatus == 'Rejected' %}
+            <span style="color: red;">{{ status.accountstatus }}</span>
+            {% else %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>
+            {% endif %}
+            {% empty %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>                   
+            {% endfor %}
+          </td>
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.paymentstatus == 'PaymentDone' %}
+            <span style="color: rgb(18, 185, 68);">{{ status.paymentstatus }}</span>
+            {% else %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>
+            {% endif %} 
+            {% empty %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>                        
+            {% endfor %}                         
+          
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    
+</div>
+<script>
+  // JavaScript to handle the search functionality
+  document.getElementById('search-button').addEventListener('click', function() {
+      var username = document.getElementById('username-input').value;
+      
+      // Loop through table rows and show/hide based on the username
+      var tableRows = document.querySelectorAll('tbody tr');
+      tableRows.forEach(function(row) {
+          var usernameCell = row.querySelector('td:nth-child(3)'); // Assuming the username is in the third column
+          if (usernameCell.textContent === username) {
+              row.style.display = 'table-row';
+          } else {
+              row.style.display = 'none';
+          }
+      });
+  });
+  </script>
+
+{% endblock %}

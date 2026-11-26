@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+{% load static %}
+{% load custom_tags %}
+
+<html lang="en">
+
+<head>
+
+      
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>{% block title %}Expense Claim Portal{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="icon" href="{% static 'exp.png' %}">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .align-left-box {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 220px; /* Adjust width if needed */
+            background-color: #f8f9fa;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .table-bordered-dark {
+            border: 1px solid #343a40;
+        }
+        .table-bordered-dark th,
+        .table-bordered-dark td {
+            border: 1px solid #343a40;
+        }
+
+        @media (max-width: 1440px) {
+            .align-left-box {
+        font-size: 9px;
+        width: 150px;
+ 
+    }
+}
+@media (max-width: 320px) {
+    .align-left-box {
+        font-size: 9px;
+        width: 150px;
+ 
+    }
+}
+
+/* Adjustments for mobile phones (portrait mode) */
+@media (max-width: 480px) {
+    .align-left-box {
+        font-size: 9px;
+        width: 150px;
+ 
+    }
+}
+
+/* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+@media (max-width: 768px) {
+    .align-left-box {
+        font-size: 9px;
+        width: 150px;
+ 
+    }
+}
+/* Sidebar link hover + active (current page) */
+.align-left-box .nav-link {
+    border-left: 4px solid transparent;
+    border-radius: 4px;
+    padding: 8px 10px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.align-left-box .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.07);
+    border-left-color: currentColor;
+    transform: translateX(3px);
+    text-decoration: none;
+}
+
+.align-left-box .nav-link.active-link {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-left-color: currentColor;
+    transform: translateX(3px);
+}
+
+    </style>
+</head>
+<body>
+  
+  {% if user.is_authenticated %}
+  <div class="align-left-box">
+    <img src="{% static 'logo.png' %}" class="img-fluid" alt="" width="100%">
+
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <br>
+            <p style="font-size:20px;">Hi, {{ user.username }}!</p>
+        </li>    
+        {% if user|is_VendorManager or user|is_IT or user|is_Admin or user|is_HR %}       
+            {% if user.first_name == 'Prabhakara Reddy G V' or user.first_name == 'AmitRathor'  %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'managerviewvendor' %}" style="color: rgb(58, 4, 128); font-weight: bold;">VendorExpense</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'fieldclaims' %}" style="color: rgb(125, 177, 155); font-weight: bold;">Field Claims</a>
+</li>
+         {% else %}
+         <li class="nav-item">
+            <a class="nav-link" href="{% url 'entereddatavendor' %}" style="color: rgb(58, 4, 128); font-weight: bold;">VendorExpense</a>
+    </li>
+    {% endif %}
+    {% endif %}
+    {% if user|is_manager %}
+        <li class="nav-item">
+            {% if user.first_name == 'Mahima Shrivastava' or user.first_name == 'Brajesh Shrivastava' %}
+                <a class="nav-link" href="{% url 'democustom' %}" style="color: rgb(97, 190, 202); font-weight: bold;">Team</a>
+                <a class="nav-link" href="{% url 'showpos' %}" style="color: rgb(58, 4, 128); font-weight: bold;">VendorExpense</a>
+            {% else %}
+            <a class="nav-link" href="{% url 'demo' %}" style="color: rgb(97, 190, 202); font-weight: bold;">Pending Claims</a>
+            <a class="nav-link" href="{% url 'approvedclaimsmanager' %}" style="color: rgb(105, 212, 91); font-weight: bold;">Approved Claims</a>
+            <a class="nav-link" href="{% url 'rejectedclaimsmanager' %}" style="color: rgb(219, 111, 111); font-weight: bold;">Rejected Claims</a>
+            {% endif %}
+        </li>
+        {% endif %}
+
+        {% if user|is_Finance %}
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'financeviewvendor' %}" style="color: rgb(58, 4, 128); font-weight: bold;">VendorExpense</a>
+    </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'financeview' %}" style="color: rgb(25, 109, 14); font-weight: bold;">FinanceReview</a>
+        </li>
+        <!-- <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereport' %}" style="color: rgb(84, 151, 163); font-weight: bold;">GenerateReport</a>
+        </li> -->
+
+        <!-- <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereportoptimized' %}" style="color: rgb(84, 151, 163); font-weight: bold;">GenerateReport</a>
+        </li> -->
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereportfinance' %}" style="color: rgb(100, 41, 6); font-weight: bold;">GenerateReport</a>
+        </li>
+
+
+        
+        {% endif %}
+
+        {% if user|is_management %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'managementview' %}" style="color: rgb(161, 202, 236); font-weight: bold;">ManagementReview</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'approvedclaims' %}" style="color: rgb(202, 134, 216); font-weight: bold;">ApprovedClaims</a>
+        </li>
+        {% endif %}
+
+        {% if user|is_Accounts %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'accountsview' %}" style="color: rgb(100, 102, 86); font-weight: bold;">Claims</a>
+        </li>
+<!-- 
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereport' %}" style="color: rgb(84, 151, 163); font-weight: bold;">GenerateReport</a>
+        </li> -->
+        <!-- <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereportoptimized' %}" style="color: rgb(84, 151, 163); font-weight: bold;">GenerateReport</a>
+        </li> -->
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'generatereportfinance' %}" style="color: rgb(100, 41, 6); font-weight: bold;">GenerateReport</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'approvedclaimsaccounts' %}" style="color: rgb(202, 134, 216); font-weight: bold;">ApprovedClaimsHR</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'accountsviewrejected' %}" style="color: rgb(207, 26, 26); font-weight: bold;">RejectedClaimsHR</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'duplicates' %}" style="color: rgb(160, 105, 153); font-weight: bold;">Duplicates</a>
+        </li>
+        {% endif %}
+
+        {% if not user|is_management %}
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'entereddata' %}" style="color: rgb(164, 184, 77); font-weight: bold;">Review</a>
+        </li>
+        {% endif %}
+
+        {% if not user|is_management %}
+        <form method="post">
+            {% csrf_token %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'newclaim' %}" style="color: rgb(123, 77, 184); font-weight: bold;">New Claim</a>
+            </li>
+        </form>
+        {% endif %}
+
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'logout' %}" style="color: rgb(158, 37, 28); font-weight: bold;">Logout</a>
+        </li>
+    </ul>
+  </div>
+  {% endif %}
+  
+  {% if messages %} 
+    {% for message in messages %} 
+        <div class="col-md-6 offset-md-3">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                {{ message }} 
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    {% endfor %} 
+  {% endif %} 
+
+  {% block content %} 
+  {% endblock %}
+<!-- Highlight the sidebar link of the current page -->
+<!-- Highlight the sidebar link of the current page -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var currentPath = window.location.pathname;
+
+        // Optional: write your own custom conditions in this function
+        function customCondition(link, currentPath) {
+            // Example: highlight "New Claim" on any URL containing "newclaim"
+            // if (link.pathname.indexOf('newclaim') !== -1 && currentPath.indexOf('newclaim') !== -1) return true;
+            return false;
+        }
+
+        document.querySelectorAll('.align-left-box .nav-link').forEach(function (link) {
+            var isActive = false;
+
+            // DEFAULT condition: exact match or sub-URL match
+            if (currentPath === link.pathname ||
+                (link.pathname !== '/' && currentPath.startsWith(link.pathname))) {
+                isActive = true;
+            }
+
+            // EXTRA condition: your own custom function
+            if (customCondition(link, currentPath)) isActive = true;
+
+            if (isActive) link.classList.add('active-link');
+        });
+    });
+</script>
+
+  <!-- JavaScript for Bootstrap and jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+
+  
+  
+</body>
+</html>

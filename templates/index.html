@@ -1,0 +1,235 @@
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link rel="icon" href="{% static 'exp.png' %}">
+<style>
+  body {
+    background-image: url("{% static '11.png' %}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    position: relative;
+  }
+
+  /* Make sure login box stays centered */
+  .login-box {
+    background: rgba(255, 255, 255, 0);  /* Transparent background */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    z-index: 1;  /* Ensure login box stays on top of background image */
+  }
+
+  /* Alert Box Styling */
+  .alert {
+    bottom: 250px; /* Distance from the top */
+    right:-20px    
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .font-weight-bold {
+    font-weight: bold;
+    font-size: 15px;
+  }
+
+  .btn-primary {
+    background-color: rgb(38, 39, 39);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .btn-primary:hover {
+    background-color: #333333;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+
+  .text-right {
+    text-align: right;
+  }
+
+  .reset-password-link {
+    margin-left: auto;
+    text-decoration: none;
+    color: rgb(38, 39, 39);
+    font-size: 14px;
+  }
+
+  .reset-password-link:hover {
+    text-decoration: underline;
+  }
+
+  .btn-login {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+  }
+
+  /* Logo styling */
+  .logo {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    width: 100px;
+    height: auto;
+    z-index: 2;  /* Ensure logo stays above other elements */
+  }
+
+  .header-text {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 50px;
+    font-weight: bold;
+    color: rgb(54, 120, 196);
+    z-index: 1;  /* Ensure header text is above other content */
+  }
+  @media (max-width: 1440px) {
+  /* Adjust styles for small MacBooks (13-inch models) */
+  .header-text{
+    p{
+      font-size: 30px;
+    }
+  }
+}
+@media (max-width: 320px) {
+  .header-text{
+    p{
+      font-size: 30px;
+    }
+  .login-box{
+    width: 50%;
+
+  }
+}
+}
+
+/* Adjustments for mobile phones (portrait mode) */
+@media (max-width: 480px) {
+  .header-text{
+    p{
+      font-size: 30px;
+    }
+    
+
+  }
+
+  .login-box{
+    width: 50%;
+
+  }
+}
+
+/* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+@media (max-width: 768px) {
+  .header-text{
+    p{
+      font-size: 30px;
+    }
+  .login-box{
+    width: 50%;
+
+  }
+}
+
+}
+
+</style>
+
+<link rel="stylesheet" href="{% static 'mystyle.css' %}">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+<body>
+  <!-- Logo -->
+  <img src="{% static 'logo.png' %}" alt="Logo" class="logo">
+
+  <!-- Display messages if any -->
+  {% if messages %}
+    <div class="alert alert-dismissible fade show {% if messages.tags %}alert-{{ messages.tags }}{% endif %}" role="alert">
+      {% for message in messages %}
+        <strong>{{ message }}</strong>
+      {% endfor %}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+  {% endif %}
+
+  <div class="header-text">
+    <p>Expense Claim Portal</p>
+  </div>
+
+  <!-- Login Form -->
+  <div class="login-box" style="position: fixed;">
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      <div class="form-group">
+        <input type="text" class="form-control" name="last_name" placeholder="DT-Number" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-control" name="password" placeholder="Password" required autocomplete="new-password">
+      </div>
+      <div class="form-group text-right">     
+        <button type="submit" class="btn btn-primary btn-login">Login</button>
+        <a href="{% url 'reset_password' %}" class="reset-password-link">Reset Password</a>
+      </div>
+    </form>
+    
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+<script>
+  window.onload = function () {
+    history.pushState(null, null, location.href); // Store current page in history
+
+    window.onpopstate = function () {
+      // When the back button is clicked, push the state again
+      history.pushState(null, null, location.href);
+      
+      // Disable forward button by preventing navigation
+      alert("Forward navigation is not allowed!");
+    };
+  };
+
+  // Disable forward navigation when back is clicked
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      history.pushState(null, null, location.href);
+    }
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    const inputs = document.querySelectorAll("input[type=text], input[type=password]");
+    inputs.forEach(input => input.value = ""); // clear all input fields
+  });
+</script>
+
+
+
+{% endblock %}

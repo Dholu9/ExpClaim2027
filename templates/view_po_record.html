@@ -1,0 +1,223 @@
+{% extends 'base2.html' %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<br>
+<div class="col-md-8 offset-md-3">
+  <h1>Edit Purchase Order</h1>
+  
+  <form method="post" action="{% url 'update_po_record' purchase_order.id %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="mb-3">
+        <div class="mb-3">
+            <label for="PONumber" class="form-label"><strong>PO Number:</strong></label>
+            <input type="text" class="form-control" id="PONumber" name="PONumber" value="{{ purchase_order.PONumber }}" disabled>
+        </div>
+        <label for="VendorName" class="form-label"><strong>Vendor Name:</strong></label>
+        <input type="text" class="form-control" id="VendorName" name="VendorName" value="{{ purchase_order.VendorName }}" required>
+    </div>
+    
+    <div class="mb-3">
+      <label for="POReference" class="form-label"><strong>PO Reference:</strong></label>
+      <input type="text" class="form-control" id="POReference" name="POReference" value="{{ purchase_order.POReference }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="VendorReference" class="form-label"><strong>Vendor Reference:</strong></label>
+      <input type="text" class="form-control" id="VendorReference" name="VendorReference" value="{{ purchase_order.VendorReference }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="PODate" class="form-label"><strong>PO Date:</strong></label>
+      <input type="date" class="form-control" id="PODate" name="PODate" value="{{ purchase_order.PODate }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="ApprovalFrom" class="form-label"><strong>Approval From:</strong></label>
+      <input type="text" class="form-control" id="ApprovalFrom" name="ApprovalFrom" value="{{ purchase_order.ApprovalFrom }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="ShipTo" class="form-label"><strong>Ship To:</strong></label>
+      <input type="text" class="form-control" id="ShipTo" name="ShipTo" value="{{ purchase_order.ShipTo }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="terms" class="form-label"><strong>Terms</strong></label>
+        <textarea class="form-control" id="terms" name="terms" rows="10" required>{{ purchase_order.Terms }}</textarea>
+    </div>
+    
+
+    <div class="mb-3">
+        <label for="POEmailCopy" class="form-label"><strong>Email Attachment:</strong></label>
+        <input class="form-control" type="file" id="POEmailCopy" name="POEmailCopy" accept=".pdf, .jpeg, .jpg, .tif, .tiff" onchange="updateFileName()">
+        {% if purchase_order.POEmailCopy %}
+            <span id="file-name" class="mt-2">Current file: {{ purchase_order.POEmailCopy|slice:"media/" }} </span>
+        {% else %}
+            <span id="file-name" class="mt-2" style="display: none;"></span>
+        {% endif %}
+    </div>    
+
+    <h3>Product Details</h3>
+    <div id="product-forms">
+        {% for product in products %}
+            <div class="mb-3 border p-3 product-form" id="product-form{{ forloop.counter }}">
+             
+                <input type="hidden" name="product_id{{ forloop.counter }}" value="{{ product.id }}">
+                <div class="mb-2">
+                    <label for="Description{{ forloop.counter }}" class="form-label"><strong>Description:</strong></label>
+                    <input type="text" class="form-control" id="Description{{ forloop.counter }}" name="Description{{ forloop.counter }}" value="{{ product.Description }}" required>
+                </div>
+                <div class="mb-2">
+                    <label for="HSNCode{{ forloop.counter }}" class="form-label"><strong>HSN Code:</strong></label>
+                    <input type="number" class="form-control" id="HSNCode{{ forloop.counter }}" name="HSNCode{{ forloop.counter }}" value="{{ product.HSNCode }}">
+                </div>
+                <div class="mb-2">
+                    <label for="Quantity{{ forloop.counter }}" class="form-label"><strong>Quantity:</strong></label>
+                    <input type="number" class="form-control" id="Quantity{{ forloop.counter }}" name="Quantity{{ forloop.counter }}" value="{{ product.Quantity }}" required oninput="calculateTotal({{ forloop.counter }})">
+                </div>
+                <div class="mb-2">
+                    <label for="Unit{{ forloop.counter }}" class="form-label"><strong>Unit:</strong></label>
+                    <input type="text" class="form-control" id="Unit{{ forloop.counter }}" name="Unit{{ forloop.counter }}" value="{{ product.Unit }}">
+                </div>
+                <div class="mb-2">
+                    <label for="Rate{{ forloop.counter }}" class="form-label"><strong>Rate:</strong></label>
+                    <input type="number" class="form-control" id="Rate{{ forloop.counter }}" name="Rate{{ forloop.counter }}" value="{{ product.Rate }}" step="0.01" required oninput="calculateTotal({{ forloop.counter }})">
+                </div>
+              
+                <div class="mb-2">
+                    <label for="Amount{{ forloop.counter }}" class="form-label"><strong>Amount:</strong></label>
+                    <input type="number" class="form-control" id="Amount{{ forloop.counter }}" name="Amount{{ forloop.counter }}" value="{{ product.Amount }}" oninput="calculateTotal({{ forloop.counter }})">
+                </div>
+                <div class="mb-2">
+                    <label for="GSTPercentage{{ forloop.counter }}" class="form-label"><strong>GST Percentage:</strong></label>
+                    <input type="number" class="form-control" id="GSTPercentage{{ forloop.counter }}" name="GSTPercentage{{ forloop.counter }}" value="{{ product.GSTPercentage }}" placeholder="Enter GST percentage" min="0" step="0.01" oninput="calculateTotal({{ forloop.counter }})">
+                </div>
+                <div class="mb-2">
+                    <label for="TotalAmount{{ forloop.counter }}" class="form-label"><strong>Total Amount (including GST):</strong></label>
+                    <input type="number" class="form-control" id="TotalAmount{{ forloop.counter }}" name="TotalAmount{{ forloop.counter }}" value="{{ product.TotalAmount }}" >
+                </div>
+                <button type="button" class="btn btn-danger remove-product" onclick="removeProduct({{ forloop.counter }})">Remove Product</button>
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" class="btn btn-success" onclick="addProduct()">Add Product</button>
+
+    <div class="offset-md-10" style="margin-top: -50px;">
+      <button type="submit" class="btn btn-primary">Update Purchase Order</button>
+
+    </div>
+  </form>
+</div>
+
+<script>
+let productCounter = {{ products.count }}; // Initialize the product counter
+
+function addProduct() {
+    // Add a new product with the next available number
+    productCounter++;
+    const productFormsDiv = document.getElementById('product-forms');
+
+    const newProductForm = `
+        <div class="mb-3 border p-3 product-form" id="product-form${productCounter}">
+       
+            <input type="hidden" name="product_id${productCounter}" value="">
+            <div class="mb-2">
+                <label for="Description${productCounter}" class="form-label"><strong>Description:</strong></label>
+                <input type="text" class="form-control" id="Description${productCounter}" name="Description${productCounter}" required>
+            </div>
+            <div class="mb-2">
+                <label for="HSNCode${productCounter}" class="form-label"><strong>HSN Code:</strong></label>
+                <input type="text" class="form-control" id="HSNCode${productCounter}" name="HSNCode${productCounter}">
+            </div>
+            <div class="mb-2">
+                <label for="Quantity${productCounter}" class="form-label"><strong>Quantity:</strong></label>
+                <input type="number" class="form-control" id="Quantity${productCounter}" name="Quantity${productCounter}" required oninput="calculateTotal(${productCounter})">
+            </div>
+            <div class="mb-2">
+                <label for="Unit${productCounter}" class="form-label"><strong>Unit:</strong></label>
+                <input type="text" class="form-control" id="Unit${productCounter}" name="Unit${productCounter}">
+            </div>
+            <div class="mb-2">
+                <label for="Rate${productCounter}" class="form-label"><strong>Rate:</strong></label>
+                <input type="number" class="form-control" id="Rate${productCounter}" name="Rate${productCounter}" step="0.01" required oninput="calculateTotal(${productCounter})">
+            </div>
+            <div class="mb-2">
+                <label for="Amount${productCounter}" class="form-label"><strong>Amount:</strong></label>
+                <input type="number" class="form-control" id="Amount${productCounter}" name="Amount${productCounter}" oninput="calculateTotal(${productCounter})">
+            </div>
+            <div class="mb-2">
+                <label for="GSTPercentage${productCounter}" class="form-label"><strong>GST Percentage:</strong></label>
+                <input type="number" class="form-control" id="GSTPercentage${productCounter}" name="GSTPercentage${productCounter}" placeholder="Enter GST percentage" min="0" step="0.01" oninput="calculateTotal(${productCounter})">
+            </div>
+            <div class="mb-2">
+                <label for="TotalAmount${productCounter}" class="form-label"><strong>Total Amount (including GST):</strong></label>
+                <input type="number" class="form-control" id="TotalAmount${productCounter}" name="TotalAmount${productCounter}" >
+            </div>
+            <button type="button" class="btn btn-danger remove-product" onclick="removeProduct(${productCounter})">Remove Product</button>
+        </div>
+    `;
+
+    productFormsDiv.insertAdjacentHTML('beforeend', newProductForm);
+}
+
+function removeProduct(index) {
+    const productForm = document.getElementById(`product-form${index}`);
+    if (productForm) {
+        productForm.remove();
+        updateProductForms(); // Update product forms after removal
+    }
+}
+
+function updateProductForms() {
+    const productFormsDiv = document.getElementById('product-forms');
+    const productForms = productFormsDiv.getElementsByClassName('product-form');
+
+    // Loop through each product form and update the IDs and names
+    for (let i = 0; i < productForms.length; i++) {
+        const formIndex = i + 1; // New index starts from 1
+        productForms[i].id = `product-form${formIndex}`;
+
+        // Update inputs inside the form
+        const inputs = productForms[i].getElementsByTagName('input');
+        for (let input of inputs) {
+            const name = input.name.replace(/\d+$/, formIndex); // Replace the last digits with the new index
+            input.name = name;
+            input.id = name; // Update the ID as well
+        }
+    }
+
+    // Reset the productCounter to the count of remaining products
+    productCounter = productForms.length > 0 ? productForms.length : 0; 
+}
+
+    
+    function calculateTotal(index) {
+        const quantity = parseFloat(document.getElementById(`Quantity${index}`).value) || 0;
+        const rate = parseFloat(document.getElementById(`Rate${index}`).value) || 0;
+        const gstPercentage = parseFloat(document.getElementById(`GSTPercentage${index}`).value) || 0;
+        const amount = parseFloat(document.getElementById(`Amount${index}`).value) || 0;
+    
+        // Calculate the total amount including GST
+        const gstAmount = (amount * gstPercentage / 100);
+        const totalAmount = amount + gstAmount;
+        const calculatedAmount = quantity * rate;
+    
+        // Update the TotalAmount field
+        document.getElementById(`TotalAmount${index}`).value = totalAmount.toFixed(2);
+        document.getElementById(`Amount${index}`).value = calculatedAmount.toFixed(2);
+    }
+    
+    // Function to calculate totals on page load
+    function calculateAllTotals() {
+        for (let i = 1; i <= productCounter; i++) {
+            calculateTotal(i);
+        }
+    }
+    
+    // Run the total calculations when the page loads
+    window.onload = calculateAllTotals;
+    </script>    
+
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends 'base2.html' %}
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %}
+
+<br><br><br><br>
+<style>
+   .btn-space {
+    margin-right: 15px; /* Adds space between the buttons */
+  }
+  .table-container {
+    width: 100%;
+    max-height: 750px; /* Adjust max-height as needed */
+    overflow-y: auto; /* Vertical scroll for overflow */
+    overflow-x: auto; /* Horizontal scroll for overflow */
+    margin: 0;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse; /* Ensure borders and spacing are collapsed */
+    table-layout: fixed; /* Ensures fixed layout */
+  }
+  
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    border-right: 2px solid #380a0a; /* Prevents text wrapping */
+  }
+  
+  th {
+    position: sticky; /* Makes the header sticky */
+    top: 0; /* Set the top position for sticky behavior */
+    background-color: rgb(207, 219, 224); /* Background color for visibility */
+    text-align: center;
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    z-index: 10; /* Ensures it stays above other content when scrolling */
+  }
+
+  @media (max-width: 1260px) {
+  .form-control,
+  .form-select {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 12px;
+  } 
+  button {
+  max-height: 30px;
+  padding: 0px 0px; /* Fixed padding ensures consistent size */
+  font-size: 10px;
+}
+.data-row .po{
+  font-size: 2px;
+}
+.btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+ 
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+
+/* Small Laptops and Tablets (Max 1024px) */
+@media (max-width: 1024px) {
+  .form-control,
+  .form-select{
+    max-width: 180px;
+    font-size: 8px;
+    padding: 12px;
+  }
+  button {
+  max-height: 30px;
+  padding: 0px 0px; /* Fixed padding ensures consistent size */
+  font-size: 10px;
+}
+.data-row .po{
+  font-size: 2px;
+}
+.btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+
+  
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Larger Mobile Screens (Max 768px) */
+@media (max-width: 768px) {
+  .form-control,
+  .form-select{
+    max-width: 180px;
+    font-size: 8px;
+    padding: 12px;
+  }  
+  button {
+  max-height: 30px;
+  padding: 0px 0px; /* Fixed padding ensures consistent size */
+  font-size: 10px;
+}
+.data-row .po{
+  font-size: 2px;
+}
+.btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+ 
+/* Small Mobile Screens (Max 480px) */
+@media (max-width: 480px) {
+  .form-control,
+  .form-select
+  {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 12px;
+  } 
+  .data-row .po{
+  font-size: 2px;
+}
+  button {
+  max-height: 30px;
+  padding: 0px 0px; /* Fixed padding ensures consistent size */
+  font-size: 10px;
+}
+.btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+ 
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }
+  
+  .form-label {
+    font-size: 8px;
+  }
+}
+/* Extra Small Screens (Max 320px) */
+@media (max-width: 320px) {
+  .form-control,
+  .form-select {
+    max-width: 180px;
+    font-size: 8px;
+    padding: 12px;
+  }
+  .data-row .po{
+  font-size: 2px;
+}
+  button {
+  max-height: 30px;
+  padding: 0px 0px; /* Fixed padding ensures consistent size */
+  font-size: 10px;
+}
+.btn-secondary,
+  .btn-info,
+  .btn-warning,
+  .btn-success {
+    max-width: 120px;
+    font-size: 8px; /* Increase from 3px so it's readable */
+  } 
+
+  td, th {
+    font-size: 8px;
+    padding: 10px;
+  }  
+  .form-label {
+    font-size: 8px;
+  }
+}
+</style>
+
+
+<div class="container mb-3">
+  <form id="filter-form" class="row align-items-end">
+    {% csrf_token %}
+    <div class="col-md-2 offset-2">
+      <label for="start_date" class="form-label">Start Date</label>
+      <input type="date" class="form-control" id="start_date" name="start_date">
+    </div>
+    <div class="col-md-2">
+      <label for="end_date" class="form-label">End Date</label>
+      <input type="date" class="form-control" id="end_date" name="end_date">
+    </div>
+
+    <div class="col-md-2">
+      <label for="vendor_name" class="form-label">Vendor Name</label>
+      <select class="form-control" id="vendor_name" name="vendor_name">
+        <option value="">All Vendors</option>
+        {% for vendor in vendors %}
+          <option value="{{ vendor.VendorName }}">{{ vendor.VendorName }}</option>
+        {% endfor %}
+      </select>
+    </div>       
+    <button type="button" class="btn btn-info" onclick="validateAndFilter()">Filter</button>
+  <div class="offset-5">
+    <button type="button" class="btn btn-warning" onclick="generateSelectedClaimsExcel()">Download Excel</button>
+    <button type="button" class="btn btn-secondary" onclick="refreshPage()">Refresh</button>
+</div>
+  </form>
+</div>
+
+<div class="col-9 offset-md-2">
+  <table class="table table-striped" id="data-table">
+    <thead style="background-color:rgb(207, 219, 224);">
+      <tr>
+        <th scope="col">PO Number</th>
+        <th scope="col">PO Reference</th>
+        <th scope="col">Vendor Name</th>
+        <th scope="col">Vendor Reference</th>       
+        <th scope="col">PO Date</th>
+        <th scope="col">Approval From</th>
+        <th scope="col">Requested By</th>
+        <th scope="col">Email Attachment</th>   
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in data %}
+        <tr class="data-row" >   
+          <td class="po" style="font-size: 11px; font-weight: bold;"><a href="{% url 'poproducts' c.PONumber %}">{{ c.PONumber }}</a></td>       
+          <td>{{ c.POReference }}</td>
+          <td>{{ c.VendorName }}</td>
+          <td>{{ c.VendorReference }}</td>    
+          <td>{{ c.PODate }}</td>     
+          <td>{{ c.ApprovalFrom }}</td>      
+          <td>{{ c.RequestedBy }}</td>  
+          <td>
+            {% if c.POEmailCopy.name %}
+            <a href="{{ c.POEmailCopy.url }}" target="_blank" id='faaladc' class="small-font" style="font-weight: bolder;">
+                {{ c.POEmailCopy.name|slice:"-10:" }}
+            </a>    
+        
+            
+            {% endif %}
+          </td>       
+      
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function validateAndFilter() {
+  var startDate = document.getElementById('start_date').value;
+  var endDate = document.getElementById('end_date').value;
+
+  var vendorName = document.getElementById('vendor_name').value;
+
+  // Check if both start and end dates are selected
+  if (startDate && endDate) {
+    filterTable();
+  } else {
+    alert('Please select both start and end dates to filter.');
+  }
+}
+
+function filterTable() {
+    var startDate = document.getElementById('start_date').value;
+    var endDate = document.getElementById('end_date').value;
+    var vendorName = document.getElementById('vendor_name').value;
+
+    var start = new Date(startDate);
+    var end = new Date(endDate);
+
+    var rows = document.querySelectorAll('.data-row');
+
+    rows.forEach(function(row) {
+        var invoiceDate = new Date(row.querySelector('td:nth-child(5)').textContent.trim()); // Adjust the index if needed
+        var rowVendorName = row.querySelector('td:nth-child(3)').textContent.trim();
+
+        var isDateMatch = (invoiceDate >= start && invoiceDate <= end);
+        var isVendorMatch = !vendorName || rowVendorName === vendorName;
+
+        if (isDateMatch && isVendorMatch) {
+            row.style.display = ''; // Show row
+        } else {
+            row.style.display = 'none'; // Hide row
+        }
+    });
+
+
+
+  document.getElementById('total-invoice-amount').textContent = totalInvoiceAmount.toFixed(2);
+  document.getElementById('total-tax').textContent = totalTax.toFixed(2);
+  document.getElementById('total-amount').textContent = totalAmount.toFixed(2);
+}
+
+
+ 
+function generateSelectedClaimsExcel() {
+  let visibleClaimsData = [];
+
+  // Collect data from visible rows
+  document.querySelectorAll('#data-table tbody tr').forEach(function (row) {
+    if (row.style.display !== 'none') {
+      let PONumber = row.querySelector('td:nth-child(1)');
+      let POReference = row.querySelector('td:nth-child(2)');
+      let VendorName = row.querySelector('td:nth-child(3)');
+      let PODate = row.querySelector('td:nth-child(4)');
+      let ApprovalFrom = row.querySelector('td:nth-child(5)');
+      let RequestedBy = row.querySelector('td:nth-child(6)');
+    
+
+      // Ensure data is in the correct format
+      let claimData = {
+        PONumber: PONumber ? PONumber.textContent.trim() : '',
+        POReference: POReference ? POReference.textContent.trim() : '',
+        VendorName: VendorName ? VendorName.textContent.trim() : '',
+        PODate: PODate ? PODate.textContent.trim() : '',
+        ApprovalFrom: ApprovalFrom ? ApprovalFrom.textContent.trim() : '',
+        RequestedBy: RequestedBy ? RequestedBy.textContent.trim() : '',
+      
+      };
+
+      visibleClaimsData.push(claimData);
+    }
+  });
+
+  let excelData = {
+    claims: visibleClaimsData
+    // No totals included here
+  };
+
+  fetch("{% url 'downloadporeport' %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+    },
+    body: JSON.stringify(excelData)
+  })
+  .then(response => response.blob())
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, -1);
+    a.download = `POReport_${timestamp}.xlsx`;
+
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+  })
+  .catch(error => console.error('Error generating Excel:', error));
+}
+
+function refreshPage() {
+  window.location.reload();
+}
+
+
+
+
+
+
+</script>
+
+{% endblock %}

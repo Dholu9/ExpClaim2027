@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Claim Tracking{% endblock %}
+
+{% block content %} 
+
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 750px; /* Adjust max-height as needed */
+    overflow-y: auto; /* Vertical scroll for overflow */
+    overflow-x: auto; /* Horizontal scroll for overflow */
+    margin: 0;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse; /* Ensure borders and spacing are collapsed */
+    table-layout: fixed; /* Ensures fixed layout */
+  }
+  
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    border-right: 2px solid #380a0a; /* Prevents text wrapping */
+  }
+  
+  th {
+    position: sticky; /* Makes the header sticky */
+    top: 0; /* Set the top position for sticky behavior */
+    background-color: rgb(207, 219, 224); /* Background color for visibility */
+    text-align: center;
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    z-index: 10; /* Ensures it stays above other content when scrolling */
+  }
+  @media (max-width: 1440px) {
+  /* Adjust styles for small MacBooks (13-inch models) */
+  td, th {
+    font-size: 10px; /* Reduce font size for smaller screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+@media (max-width: 320px) {
+  td, th {
+    font-size: 8px; /* Smaller font size for very small screens */
+    padding: 8px; /* Reduce padding to fit content */
+  }
+}
+
+/* Adjustments for mobile phones (portrait mode) */
+@media (max-width: 480px) {
+  td, th {
+    font-size: 8px; /* Slightly larger than for small screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+
+/* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+@media (max-width: 768px) {
+  td, th {
+    font-size: 8px; /* Larger font size for larger mobile screens */
+    padding: 12px; /* Standard padding for slightly bigger screens */
+  }
+}
+.oval {
+  display: inline-block;
+  padding: 5px 10px;
+  background-color: #f0f0f0;
+  border-radius: 20%;
+  text-align: left; /* Align the text inside the oval to the left */
+  font-size: 12px; /* You can adjust this for thinner text */
+}
+
+.patch {
+  color: #a83b3b;
+  font-size: x-small;
+  font-weight: bold;
+}
+  
+  </style>
+
+<div class="col-9 offset-md-2">
+    <br></br>
+ 
+
+    <h5>Search by Username</h5>
+
+
+    <!-- Add a form to input the username -->
+    <div style="display: flex; align-items: center;">
+      <form id="search-form" style="display: flex; align-items: center;" onsubmit="return false;">
+          <input type="text" id="username-input" placeholder="Enter username" style="margin-right: 10px;">
+          <button type="button" id="search-button" style="margin-right: 10px;">Search</button>
+      </form>
+      <button onclick="window.location.reload();" class="btn btn-danger" style="margin-left: 10px;">Remove Filter</button>
+    </div>
+    <br>
+    <div class="table-container">
+    <table class="table table-striped">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNo</th>
+          <th scope="col" style="width: 150px;">SubmitDt.</th>
+          <th scope="col" style="width: 150px;">Username</th>         
+          <th scope="col">DTNumber</th>
+          <th scope="col">Department</th>
+          <th scope="col">Manager</th>
+          <th scope="col">ExpDetails</th>
+          <th scope="col">TotalAmt</th>      
+          <th scope="col">Mngr-Status</th>
+          <th scope="col">AccStatus</th>
+        
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for n in rejectedclaims %}     
+  
+        <tr style="background-color:rgb(239, 244, 247);">
+          <td>
+            <a href="{% url 'entereddata2' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+          </td>        
+          <td style="width: 150px;">{{n.DateofSubmission}}</td>
+          <td>{{n.user.first_name}}</td>         
+          <td>{{n.user.last_name}}</td>
+          <td>{{n.Department}}</td>
+          <td style="width: 200px;">{{n.Manager}}</td>
+          <td>{{n.ExpenseDetails}}</td>
+         
+            {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == n.ClaimNumber %}     
+         
+              <td>{{ claim_total|default:0 }}</td>
+        
+          {% endif %}
+          {% endfor %}
+     
+         
+          <td>
+            {% if n.claimstatus_set.all %}
+            {% for status in n.claimstatus_set.all %}
+              {% if status.status == 'Approved' %}
+                <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-success">{{ status.status }}</a>
+              {% elif status.status == 'Rejected' %}
+                <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-danger">{{ status.status }}</a>
+              {% elif status.status == 'ReSubmitted' %}
+              <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">{{ status.status }}</a>
+              {% else %}
+              <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+              {% endif %}
+            {% endfor %}
+            {% else %}
+            <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+         </td>
+          
+         <td>
+          {% if n.claimstatus_set.all %}
+            {% for status in n.claimstatus_set.all %}
+         
+              {% if status.accountstatus == 'Approved' %}
+                <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-success">{{ status.accountstatus }}</a>
+              {% elif status.accountstatus == 'Rejected' %}
+                <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-danger">{{ status.accountstatus }}</a>
+              {% elif status.accountstatus == 'ReSubmitted' %}
+                <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">{{ status.accountstatus }}</a>
+                {% else %}
+            <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+              {% endif %}
+            {% endfor %}
+            {% else %}
+            <a href="{% url 'entereddata2' n.ClaimNumber %}" class="text-warning">Pending</a>
+          {% endif %}
+            
+        </td>
+         
+        </tr>    
+{% endfor %}
+      </tbody>
+    </table>
+    </div>
+</div>
+
+<script>
+  // JavaScript to handle the search functionality
+  document.getElementById('search-button').addEventListener('click', function() {
+      var username = document.getElementById('username-input').value;
+      
+      // Loop through table rows and show/hide based on the username
+      var tableRows = document.querySelectorAll('tbody tr');
+      tableRows.forEach(function(row) {
+          var usernameCell = row.querySelector('td:nth-child(3)'); // Assuming the username is in the third column
+          if (usernameCell.textContent === username) {
+              row.style.display = 'table-row';
+          } else {
+              row.style.display = 'none';
+          }
+      });
+  });
+
+  document.getElementById('username-input').addEventListener('input', filterTable);
+document.getElementById('search-button').addEventListener('click', filterTable);
+document.getElementById('search-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    filterTable();
+});
+
+function filterTable() {
+    var username = document.getElementById('username-input').value.toLowerCase();
+    
+    var tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(function(row) {
+        var usernameCell = row.querySelector('td:nth-child(3)'); // Assuming username is in the 4th column
+        if (usernameCell.textContent.toLowerCase().includes(username)) {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+  </script>
+
+{% endblock %}
+
+
+

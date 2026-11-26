@@ -1,0 +1,166 @@
+{% extends 'base2.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+
+
+
+<div class="offset-3" style="font-size: smaller; width: 70%;">
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2 style="font-size: large; color: blueviolet; font-weight: bold;">Vendor Details</h2>
+                </div>
+                <div class="card-body">               
+            
+                        <div class="form-row">
+                            <div class="form-group col-md-6"> 
+                                <label for="VendorName" class="form-label"><strong>Vendor Name</strong></label> 
+                                <input type="text" class="form-control" name="VendorEmail" value="{{ data.VendorName }} " disabled>                       
+                          
+                            </div>
+                            <div class="form-group col-md-6"> 
+                                <label for="VendorName" class="form-label"><strong>Vendor Email</strong></label>                           
+                                <input type="text" class="form-control" name="VendorEmail" value="{{ data.VendorEmail }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4"> 
+                                <label for="VendorName" class="form-label"><strong>Vendor GST</strong></label>                          
+                                <input type="text" class="form-control" name="VendorGST" value="{{ data.VendorGST }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="VendorName" class="form-label"><strong>Pan Number</strong></label>                         
+                            <input type="text" class="form-control" name="PanNumber" value="{{ data.PanNumber }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4">   
+                                <label for="VendorName" class="form-label"><strong>Mobile Number</strong></label>                        
+                                <input type="number" class="form-control" name="MobileNumber" value="{{ data.MobileNumber }}" disabled>
+                            </div>
+                        </div>
+             
+                        <div class="form-row mb-3">
+                            <div class="form-group col-md-12">
+                                <label for="Address" class="form-label"><strong>Address</strong></label>
+                                <textarea class="form-control" name="Address" rows="2" disabled>{{ data.PlotNumber }}, {{ data.StreetName }}, {{ data.Locality }}, {{ data.City }}, {{ data.State }}, {{ data.Pincode }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col-md-4">   
+                                <label for="VendorName" class="form-label"><strong>Bank Name</strong></label>                 
+                                <input type="text" class="form-control" name="BankName" value="{{ data.BankName }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4"> 
+                                <label for="VendorName" class="form-label"><strong>Account Number</strong></label>                     
+                                <input type="number" class="form-control" name="AccountNumber" value="{{ data.AccountNumber }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4">  
+                                <label for="VendorName" class="form-label"><strong>IFSC Code</strong></label>                          
+                                <input type="text" class="form-control" name="IFSCCode" value="{{ data.IFSCCode }}" disabled>
+                            </div>
+                        </div>
+
+                        <div class="form-row">                     
+                            {% if data.CancelledCheque.name %}
+                            <div class="col-md-6">
+                              <label for="CancelledCheque" class="form-label" style="font-weight: bolder;">Cancelled Cheque</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if data.CancelledCheque.name %}
+                                      <a href="{{ data.CancelledCheque.url }}" target="_blank" id='faal' class="small-font" style="font-weight: bolder;">
+                                          {{ data.CancelledCheque.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>
+                                 
+                              </div>
+                          </div>   
+                          
+                       
+                            {% endif %}  
+                      
+                            {% if data.GSTCopy.name %}
+                            <div class="col-md-6">
+                              <label for="GSTCopy" class="form-label" style="font-weight: bolder;">GST Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if data.GSTCopy.name %}
+                                      <a href="{{ data.GSTCopy.url }}" target="_blank" id='faaladd' class="small-font" style="font-weight: bolder;">
+                                          {{ data.GSTCopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>                                  
+                                 
+                              </div>
+                          </div> 
+                        
+                      
+                            {% endif %} 
+
+                            {% if data.MSMECopy.name %}
+                            <div class="col-md-6">
+                              <label for="MSMECopy" class="form-label" style="font-weight: bolder;">MSME Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if data.MSMECopy.name %}
+                                      <a href="{{ data.MSMECopy.url }}" target="_blank" id='faaladv' class="small-font" style="font-weight: bolder;">
+                                          {{ data.MSMECopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>                                  
+                               
+                              </div>
+                          </div>   
+                               
+                            
+                            {% endif %}    
+                            
+                            {% if data.EmailCopy.name %}
+                            <div class="col-md-6">
+                              <label for="EmailCopy" class="form-label" style="font-weight: bolder;">Email Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if data.EmailCopy.name %}
+                                      <a href="{{ data.EmailCopy.url }}" target="_blank" id='faalade' class="small-font" style="font-weight: bolder;">
+                                          {{ data.EmailCopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>
+                              
+                              </div>
+                          </div>  
+                            
+                            
+                            {% endif %} 
+
+                            {% if data.ContractCopy.name != 'default.pdf' %}
+                            <div class="col-md-6">
+                              <label for="ContractCopy" class="form-label" style="font-weight: bolder;">Contract Copy</label>
+                              <div class="d-flex align-items-center">
+                                  <div>
+                                      {% if data.ContractCopy.name %}
+                                      <a href="{{ data.ContractCopy.url }}" target="_blank" id='faaladc' class="small-font" style="font-weight: bolder;">
+                                          {{ data.ContractCopy.name|slice:"-10:" }}
+                                      </a>
+                                      {% endif %}
+                                  </div>                                  
+                        
+                              </div>
+                          </div> 
+                          
+             
+                          {% endif %}   
+                      
+                        </div>      
+                        <script>
+                            function goBack() {
+    window.history.back();
+}
+                        </script>
+              <div class="col-12">  
+                <br>      
+    <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>  
+</div>  
+
+{% endblock %}

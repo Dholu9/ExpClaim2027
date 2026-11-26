@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Expense Claim Portal{% endblock %}
+
+{% block content %} 
+
+<style>
+  .table-container {
+    width: 100%;
+    max-height: 750px; /* Adjust max-height as needed */
+    overflow-y: auto; /* Vertical scroll for overflow */
+    overflow-x: auto; /* Horizontal scroll for overflow */
+    margin: 0;
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse; /* Ensure borders and spacing are collapsed */
+    table-layout: fixed; /* Ensures fixed layout */
+  }
+  
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    border-right: 2px solid #380a0a; /* Prevents text wrapping */
+  }
+  
+  th {
+    position: sticky; /* Makes the header sticky */
+    top: 0; /* Set the top position for sticky behavior */
+    background-color: rgb(207, 219, 224); /* Background color for visibility */
+    text-align: center;
+    font-size: 16px;
+    color: rgb(43, 26, 53);
+    overflow: hidden; /* Prevents overflow */
+    text-overflow: ellipsis; /* Adds ellipsis for overflow text */
+    white-space: nowrap; /* Prevents text wrapping */
+    z-index: 10; /* Ensures it stays above other content when scrolling */
+  }
+
+  @media (max-width: 1440px) {
+  /* Adjust styles for small MacBooks (13-inch models) */
+  td, th {
+    font-size: 10px; /* Reduce font size for smaller screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+@media (max-width: 320px) {
+  td, th {
+    font-size: 8px; /* Smaller font size for very small screens */
+    padding: 8px; /* Reduce padding to fit content */
+  }
+}
+
+/* Adjustments for mobile phones (portrait mode) */
+@media (max-width: 480px) {
+  td, th {
+    font-size: 8px; /* Slightly larger than for small screens */
+    padding: 10px; /* Adjust padding */
+  }
+}
+
+/* Adjustments for larger mobile screens (e.g., iPhone Plus, larger Androids) */
+@media (max-width: 768px) {
+  td, th {
+    font-size: 8px; /* Larger font size for larger mobile screens */
+    padding: 12px; /* Standard padding for slightly bigger screens */
+  }
+}
+
+  
+  </style>
+
+<div class="col-12 offset-md-2">
+    <br></br>
+    <br></br>
+    
+    <h5>Search by Username</h5>
+
+    <form id="search-form">
+        <input type="text" id="username-input" placeholder="Enter username">
+        <button type="button" id="search-button">Search</button>
+    </form>
+    <br>
+    <div class="table-container">
+    <table class="table table-striped">
+      <thead style="background-color:rgb(207, 219, 224);">
+        <tr>
+          <th scope="col">ClaimNo</th>
+          <th scope="col">ApprDt.</th>
+          <th scope="col">UserName</th>
+       
+          <th scope="col">DTNo</th>
+          <th scope="col">Dept</th>
+          <th scope="col">Manager</th>
+          <th scope="col">ExpDetails</th>
+          <th scope="col">TotalAmt</th>
+          <th scope="col">Status</th>
+          
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for n in singleclaims %}        
+        <tr style="background-color:rgb(239, 244, 247);">
+          <td>
+            <a href="{% url 'managementreview' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+          </td>        
+          <td>{{ n.StatusDate|date:"M. d, Y" }}</td>
+          <td>{{n.user.first_name}}</td>
+  
+          <td>{{n.user.last_name}}</td>
+          <td>{{n.Department}}</td>
+          <td>{{n.Manager}}</td>
+          <td>{{n.ExpenseDetails}}</td>
+          {% for claim_number, claim_total in total_claim_amounts %}
+          {% if claim_number == n.ClaimNumber %}
+              <td>{{ claim_total|default:0 }}</td>
+          {% endif %}
+      {% endfor %}
+
+          
+          <td>
+            {% for status in n.claimstatus_set.all %}
+            {% if status.managementstatus == 'Approved' %}
+            <span style="color: rgb(18, 185, 68);">{{ status.managementstatus }}</span>
+            {% elif status.managementstatus == 'Rejected' %}
+            <span style="color: red;">{{ status.managementstatus }}</span>
+            {% else %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>
+            {% endif %}
+            {% empty %}
+            <span style="color: rgb(104, 97, 93);">Pending</span>                   
+            {% endfor %}
+          </td>
+          
+        </tr>
+        
+      
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+</div>
+
+<script>
+ document.addEventListener('DOMContentLoaded', function() {
+    // JavaScript to handle the search functionality
+    var searchButton = document.getElementById('search-button');
+    var usernameInput = document.getElementById('username-input');
+
+    function performSearch() {
+        var username = usernameInput.value.trim().toLowerCase(); // Trim and convert to lowercase for case-insensitive comparison
+
+        // Loop through table rows and show/hide based on the username
+        var tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(function(row) {
+            var usernameCell = row.querySelector('td:nth-child(3)'); // Assuming the username is in the third column
+            var rowUsername = usernameCell.textContent.trim().toLowerCase(); // Get the username from the table row
+
+            // Check if the entered username matches the first three letters of any username in the table
+            if (rowUsername.startsWith(username) || (username.length >= 3 && rowUsername.includes(username))) {
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Trigger search when Enter key is pressed in the input field
+    usernameInput.addEventListener('keypress', function(event) {
+        if (event.keyCode === 13) { // Check if Enter key is pressed
+            event.preventDefault(); // Prevent form submission
+            performSearch();
+        }
+    });
+
+    // Trigger search when the search button is clicked
+    searchButton.addEventListener('click', performSearch);
+});
+  </script>
+
+{% endblock %}

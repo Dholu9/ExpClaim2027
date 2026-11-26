@@ -1,0 +1,715 @@
+{% extends 'base2.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+
+<br>
+<div class="col-md-8 offset-md-3">
+  <!-- Parent Model Form -->
+  <form method="post" action="{% url 'savevendorrecord' %}" class="row g-3" enctype="multipart/form-data" onsubmit="return checkChildForms();">
+
+    {% csrf_token %}
+
+    <div class="col-12">
+      <label for="EmployeeName" class="form-label">Raised By</label>
+      <input type="text" class="form-control" id="EmployeeName" name="EmployeeName" value="{{ first_name }}" readonly>
+    </div>
+
+    <div class="col-md-6">
+      <label for="Project" class="form-label">Project</label>
+      <select id="Project" name="Project" class="form-control" required>
+          <option value="" disabled selected>Select a Project</option>
+          {% for project in projects %}
+              <option  value="{{ project.id }}" >{{ project.project_title }}</option>
+          {% endfor %}
+      </select>
+  </div>
+  
+  <div class="col-md-6">
+      <label for="Subproject" class="form-label">Sub-Project</label>
+      <select id="Subproject" name="Subproject" class="form-control" required>
+          <option value="" disabled selected>Select a Sub-Project</option>
+          <!-- Subprojects will be populated here based on the selected project -->
+      </select>
+  </div>
+
+    <div class="col-12 mt-4">
+      <select id="VendorSelection" name="VendorSelection" class="form-control" onchange="filterClaims()" required>
+        <option value="" disabled selected>Select a Vendor</option>
+        {% for vendor in vendors %}
+          <option value="{{ vendor.VendorName }}">{{ vendor.VendorName }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12">
+      <label for="VendorExpenseDetail" class="form-label">Vendor Expense Details</label>      
+      <input type="text" class="form-control" id="VendorExpenseDetail" name="VendorExpenseDetail" required>
+    </div>
+    <div class="col-12">
+      <label for="InvoiceNumber" class="form-label">Invoice Number</label>
+      <input type="text" class="form-control" id="InvoiceNumber" name="InvoiceNumber" required>
+    </div>
+
+    <div class="col-12">
+      <label for="InvoiceDate" class="form-label">Invoice Date</label>
+      <input type="date" class="form-control" id="InvoiceDate" name="InvoiceDate" required>
+    </div>
+
+    <div class="col-md-6">
+      <label for="FromDate" class="form-label">Start Date</label>
+      <input type="date" class="form-control" id="FromDate" name="FromDate" min="{{ minDate }}" max="{{ maxDate }}" placeholder="Choose Date" onchange="updateMaxEndDate()" required>
+    </div>
+
+    <div class="col-md-6">
+      <label for="ToDate" class="form-label">End Date</label>
+      <input type="date" class="form-control" id="ToDate" name="ToDate" placeholder="Choose Date" min="{{ minDate }}" max="{{ maxDate }}" required>
+    </div>
+
+    <div class="col-12">
+      <label for="InvoiceAttachment" class="form-label">Invoice Attachment</label>
+      <input class="form-control" type="file" id="InvoiceAttachment" name="InvoiceAttachment" accept=".pdf, .jpeg, .jpg, .tif, .tiff" required>
+      <p class="small-font">Accepted file formats: PDF, JPEG, JPG, TIF, TIFF & Max Size: 2MB</p>
+    </div>
+
+    <div class="col-12">
+  
+      <input type="text" class="form-control" id="Description" name="Description" placeholder="Description" required>
+    </div>
+
+    <div class="col-md-6">
+      <label for="Approval" class="form-label">Approval</label>
+      <select id="Approval" name="Approval" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="WorkOrder">Work Order</option>
+        <option value="PurchaseOrder">Purchase Order</option>
+        <option value="EmailAttachment">Email Attachment</option>
+      </select>
+    </div>  
+
+    <div class="col-md-6" id="WorkorderContainer" style="display: none;">
+      <label for="WorkOrder" class="form-label">Work Order</label>
+      <input type="text" class="form-control" id="WorkorderContainer" name="WorkOrder">
+    </div>
+    <div class="col-md-6" id="PurchaseorderContainer" style="display: none;">
+      <label for="PurchaseOrder" class="form-label">PO Number</label>
+      <input type="text" class="form-control" id="PurchaseorderContainer" name="PurchaseOrder">
+    </div>
+    <div class="col-md-6" id="EmailAttachmentContainer" style="display: none;">
+      <label for="EmailAttachment" class="form-label">Email Attachment</label>
+      <input class="form-control" type="file" id="EmailAttachmentContainer" name="EmailAttachment" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+    </div>
+
+    <div class="col-md-7">
+      <label for="Quantity" class="form-label">Quantity</label>
+      <input type="text" class="form-control" id="Quantity" name="Quantity" required>
+    </div>
+ 
+    <div class="col-md-5">
+      <label for="Unit" class="form-label">Unit</label>
+      <input type="text" class="form-control" id="Unit" name="Unit" required>
+    </div>
+
+    <div class="col-md-7">
+      <label for="Rate" class="form-label">Rate</label>
+      <input type="number" class="form-control" id="Rate" name="Rate" step="0.01" min="0" required>
+    </div>
+
+    <div class="col-md-5">
+      <label for="Currency" class="form-label">Currency</label>
+      <input type="text" class="form-control" id="Currency" name="Currency" required>
+    </div>   
+  
+    <div class="col-12">
+      <label for="ApplyGST" class="form-label">Apply GST</label>
+      <select id="ApplyGST" name="ApplyGST" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+    </div>
+    
+    <div class="col-12" id="GSTContainer" style="display: none;">
+      <label for="GSTPercentage" class="form-label">GST Percentage</label>
+      <input type="number" class="form-control" id="GSTPercentage" name="GSTPercentage" placeholder="Enter GST percentage" min="0" step="0.01">
+    </div>
+
+    <div class="col-md-3">
+      <label for="AdditionalChargesApproval" class="form-label">Additional Charges Approval</label>
+      <select id="AdditionalChargesApproval" name="AdditionalChargesApproval" class="form-control" required onchange="toggleAdd()">
+        <option value="" disabled selected>Select an option</option>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+    </div>
+    
+    <div class="col-md-3" id="AddApprovedBy" style="display: none;">
+      <label for="AddApprovedBy" class="form-label">Approved By</label>
+      <select name="AddApprovedBy" class="form-control">
+        <option value="" disabled selected>Select an option</option>
+        <option value="Mahima Shrivastava">Mahima Shrivastava</option>
+        <option value="Sudha G Rao">Sudha G Rao</option>
+        <option value="Brajesh Shrivastava">Brajesh Shrivastava</option>
+        <option value="Prabhakara Reddy G V">Prabhakara Reddy G V</option>
+        <option value="Sanjay MS">Sanjay MS</option>
+      </select>
+    </div>
+    
+    <div class="col-3" id="AsperPreviousApprovalSelect" style="display: none;">
+      <label for="AsperPreviousApprovalSelect" class="form-label">As per Previous Approval</label>
+      <select id="AsperPreviousApprovalSelect" name="AsperPreviousApproval" class="form-control" onchange="toggleasper(event)">
+        <option value="" disabled selected>Select an option</option>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+    </select>
+    
+    </div>
+    
+    <div class="col-md-3" id="AddAttachmentContainer" style="display: none;">
+      <label for="AddAttachment" class="form-label">Attachment</label>
+      <input class="form-control" type="file" id="AddAttachment" name="AddAttachment" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+    </div>
+    
+    <div class="col-md-3" id="AddFieldContainer" style="display: none;">  
+      <label for="AddField" class="form-label">Comments</label>
+      <input type="text" class="form-control" id="AddField" name="AddField" placeholder="Comments">
+    </div>
+  
+    <div class="col-12">
+      <label for="AdditionalCharges" class="form-label">Additional Charges</label>
+      <select id="AdditionalCharges" name="AdditionalCharges" class="form-control" required>
+        <option value="" disabled selected>Select an option</option>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+    </div>
+       
+    <div class="col-md-6" id="AdditionalAmountContainer" style="display: none;">   
+      <input type="number" class="form-control" id="Amount" name="Amount" placeholder="Enter Amount">
+    </div>
+    <div class="col-md-6" id="AdditionalFieldContainer" style="display: none;">  
+      <input type="text" class="form-control" id="Field" name="Field" placeholder="Remarks">
+    </div>
+
+    <div class="col-md-2">
+      <label for="Advance" class="form-label">Advance</label>
+      <select id="Advance" name="Advance" class="form-control" onchange="toggleAdvance()">
+          <option value="" disabled selected>Select</option>
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+      </select>
+  </div>
+  
+  <div class="col-md-2.5" id="AdvanceApprovedBy" style="display: none;">
+      <label for="AdvanceApprovedBy" class="form-label">Approved By</label>
+      <select name="AdvanceApprovedBy" class="form-control">
+          <option value="" disabled selected>Select</option>
+          <option value="Mahima Shrivastava">Mahima Shrivastava</option>
+          <option value="Sudha G Rao">Sudha G Rao</option>
+          <option value="Brajesh Shrivastava">Brajesh Shrivastava</option>
+          <option value="Prabhakara Reddy G V">Prabhakara Reddy G V</option>
+          <option value="Sanjay MS">Sanjay MS</option>
+      </select>
+  </div>
+
+
+  
+  <div class="col-md-2" id="AdvanceAmountContainer" style="display: none;">
+      <label for="AdvanceAmount" class="form-label">Amount</label>
+      <input type="number" class="form-control" id="AdvanceAmount" name="AdvanceAmount" placeholder="Enter Advance Amount" >
+  </div> 
+  
+  <div class="col-md-2" id="ToBeDeducted" style="display: none;">
+    <label for="ToBeDeducted" class="form-label">To Be Deducted</label>
+    <select id="tobededucted" name="ToBeDeducted" class="form-control">
+        <option value="" disabled selected>Select</option>
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+    </select>
+</div>
+
+  <div class="col-md-3" id="AdvanceAttachmentContainer" style="display: none;">
+    <label for="AdvanceAttachment" class="form-label">Advance Attachment</label>
+    <input class="form-control" type="file" id="AdvanceAttachment" name="AdvanceAttachment" accept=".pdf, .jpeg, .jpg, .tif, .tiff">
+  </div>
+
+    <div class="col-12">
+      <label for="TotalClaimAmount" class="form-label">Total Claim Amount</label>
+      <div class="input-group mb-3">
+        <span class="input-group-text">Rs</span>
+        <input type="number" class="form-control" aria-label="Rupees amount (with dot and two decimal places)" name="TotalClaimAmount" id="TotalClaimAmount" value="" readonly>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <label for="Remarks" class="form-label">Remarks</label>
+      <input type="text" class="form-control" id="Remarks" name="Remarks" required>
+    </div>
+
+<br></br>
+<br></br>
+    <div class="offset-md-10">      
+    <button onclick="goBack()" class="btn btn-primary" id="go-back-button">Go Back</button>
+    <button type="submit" name="action" value="submit" class="btn btn-primary">Submit</button>   
+    </div>  
+ 
+  </form>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.querySelector('form');
+    var applyGSTSelect = document.getElementById('ApplyGST');
+    var gstContainer = document.getElementById('GSTContainer');
+    var gstPercentageInput = document.getElementById('GSTPercentage');
+    var additionalcharges = document.getElementById('AdditionalCharges');
+    var additionalamountInput = document.getElementById('AdditionalAmountContainer');
+    var additionalfieldInput = document.getElementById('AdditionalFieldContainer'); 
+    var Approval = document.getElementById('Approval');
+    var WorkorderContainer = document.getElementById('WorkorderContainer');
+    var PurchaseorderContainer = document.getElementById('PurchaseorderContainer'); 
+    var EmailAttachmentContainer = document.getElementById('EmailAttachmentContainer');     
+    var advanceyesno = document.getElementById('Advance');
+    var advanceapprovedby = document.getElementById('AdvanceApprovedBy');
+    var advanceamount = document.getElementById('AdvanceAmount');
+    var tobededucted = document.getElementById('ToBeDeducted'); // Ensure this is the correct element
+    var additionalchargesapproval = document.getElementById('AdditionalChargesApproval');
+    var addapprovedby = document.getElementById('AddApprovedBy');
+    var asperpreviousapproval = document.getElementById('AsperPreviousApprovalSelect');
+    var addattachmentcontainer = document.getElementById('AddAttachmentContainer');
+    var additionalfieldcontainer = document.getElementById('AddFieldContainer');    
+    
+
+
+  function calculateTotalClaimAmount() {
+    var efforts = parseFloat(document.getElementById('Quantity').value) || 0;
+    var rate = parseFloat(document.getElementById('Rate').value) || 0;
+    var gstPercentage = parseFloat(gstPercentageInput.value) || 0;
+    var amount = parseFloat(document.getElementById('Amount').value) || 0;
+
+    var totalClaimAmount = efforts * rate;
+
+    if (applyGSTSelect.value === 'yes') {
+        totalClaimAmount += (gstPercentage / 100) * totalClaimAmount;
+    }
+
+    if (additionalcharges.value === 'yes') {
+        totalClaimAmount += amount;
+    }
+
+    // Call the new function to deduct the advance amount
+    totalClaimAmount = deductAdvanceAmount(totalClaimAmount);
+
+    // Update the Total Claim Amount input field
+    document.getElementById('TotalClaimAmount').value = totalClaimAmount.toFixed(2);
+}
+
+document.getElementById('tobededucted').addEventListener('change', function() {
+    // Assume totalClaimAmount is defined elsewhere
+    let totalClaimAmount = parseFloat(document.getElementById('TotalClaimAmount').value) || 0; // Modify to get your actual total claim amount
+    deductAdvanceAmount(totalClaimAmount);
+});
+
+function deductAdvanceAmount(totalClaimAmount) {
+    var advamount = parseFloat(document.getElementById('AdvanceAmount').value) || 0;
+    var tobededucted = document.getElementById('tobededucted'); 
+
+    // Deduct the advance amount if 'To Be Deducted' is set to 'yes'
+    if (tobededucted.value === 'yes') {
+        totalClaimAmount -= advamount; // Deduct the advance amount
+        console.log("Deducting amount, new Total Claim Amount:", totalClaimAmount);
+    } else {
+        console.log("No deduction applied.");
+    }
+
+    console.log("Total Claim Amount after deduction:", totalClaimAmount);
+    return totalClaimAmount; // Return the updated total
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    var tobededucted = document.getElementById('ToBeDeducted');
+
+    console.log("To Be Deducted element:", tobededucted); // Check if the element is accessible
+    console.log("Initial To Be Deducted value:", tobededucted.value); // Log initial value
+
+    tobededucted.addEventListener('change', function() {
+        console.log("Updated To Be Deducted value:", tobededucted.value);
+        calculateTotalClaimAmount(); // Trigger calculation on change
+    });
+});
+
+
+function toggleGSTFields() {
+
+        gstContainer.style.display = 'none';
+        gstContainer.querySelector('input').required = false;
+        if (applyGSTSelect.value === 'yes') {
+            gstContainer.style.display = 'block';
+            gstContainer.querySelector('input').required = true;
+        } else {
+            gstContainer.style.display = 'none'; 
+            gstPercentageInput.value = ''; // Clear the existing value
+        }
+        calculateTotalClaimAmount();
+    }
+
+      function toggleApprovalFields() {
+          // Hide all containers initially
+          WorkorderContainer.style.display = 'none';
+          PurchaseorderContainer.style.display = 'none';
+          EmailAttachmentContainer.style.display = 'none';
+
+          // Reset required attributes
+          WorkorderContainer.querySelector('input').required = false;
+          PurchaseorderContainer.querySelector('input').required = false;
+          EmailAttachmentContainer.querySelector('input').required = false;
+
+          // Check the selected value and display the corresponding container
+          if (Approval.value === 'WorkOrder') {
+              WorkorderContainer.style.display = 'block';
+              WorkorderContainer.querySelector('input').required = true; // Set required if visible
+          } else if (Approval.value === 'PurchaseOrder') {
+              PurchaseorderContainer.style.display = 'block';
+              PurchaseorderContainer.querySelector('input').required = true; // Set required if visible
+          } else if (Approval.value === 'EmailAttachment') {
+              EmailAttachmentContainer.style.display = 'block';
+              EmailAttachmentContainer.querySelector('input').required = true; // Set required if visible
+          }
+      }
+
+      function toggleAdditionalChargesFields() {
+        additionalamountInput.style.display = 'none';
+        additionalfieldInput.style.display = 'none';
+        additionalfieldInput.querySelector('input').required = false;
+        additionalfieldInput.querySelector('input').required = false;
+        if (additionalcharges.value === 'yes') {
+            additionalamountInput.style.display = 'block';
+            additionalfieldInput.style.display = 'block';
+            additionalamountInput.querySelector('input').required = true;
+           
+        } else {
+            additionalamountInput.style.display = 'none';
+            additionalamountInput.value = ''; // Clear the existing value
+            additionalfieldInput.style.display = 'none';
+            additionalamountInput.required = false;
+            additionalfieldInput.required = false;
+        }
+        calculateTotalClaimAmount();      
+    }
+
+
+
+  function toggleAdvance() {
+    const advanceSelect = document.getElementById('Advance');
+    const advanceApprovedBy = document.getElementById('AdvanceApprovedBy');
+    const advanceAmount = document.getElementById('AdvanceAmountContainer');
+    const advanceAmountAttachment = document.getElementById('AdvanceAttachmentContainer');
+    const toBeDeducted = document.getElementById('ToBeDeducted');
+
+    // Always hide these elements initially
+    advanceApprovedBy.style.display = 'none';
+    advanceAmount.style.display = 'none';
+    toBeDeducted.style.display = 'none';
+    advanceAmountAttachment.style.display = 'none';
+
+    // Clear previous values
+    advanceApprovedBy.querySelector('select').value = '';
+ 
+    toBeDeducted.querySelector('select').value = '';
+
+    if (advanceSelect.value === 'yes') {
+        advanceApprovedBy.style.display = 'block';
+        advanceAmount.style.display = 'block';
+        toBeDeducted.style.display = 'block';
+        advanceAmountAttachment.style.display = 'block';
+        advanceApprovedBy.querySelector('select').required = true;
+        advanceAmount.querySelector('input').required = true;
+        toBeDeducted.querySelector('select').required = true;
+      
+
+  } else {
+        advanceApprovedBy.style.display = 'none';
+        advanceAmount.style.display = 'none';
+        toBeDeducted.style.display = 'none';
+        advanceAmountAttachment.style.display = 'none';
+        advanceApprovedBy.querySelector('select').required = false;
+        advanceAmount.querySelector('input').required = false;
+        advanceAmount.value='';
+        toBeDeducted.querySelector('select').required = false;
+        }
+        calculateTotalClaimAmount(); 
+  
+}
+
+
+if (additionalcharges.value === 'yes') {
+            additionalamountInput.style.display = 'block';
+            additionalfieldInput.style.display = 'block';
+            additionalamountInput.querySelector('input').required = true;
+           
+        } else {
+            additionalamountInput.style.display = 'none';
+            additionalamountInput.value = ''; // Clear the existing value
+            additionalfieldInput.style.display = 'none';
+            additionalamountInput.required = false;
+            additionalfieldInput.required = false;
+        }
+        calculateTotalClaimAmount(); 
+
+function toggleAdd() {
+    const approvalSelect = document.getElementById("AdditionalChargesApproval");
+    const approvedByDiv = document.getElementById("AddApprovedBy");
+    const asperSelect = document.getElementById("AsperPreviousApprovalSelect");
+    const attachSelect = document.getElementById("AddAttachmentContainer");
+    const fieldSelect = document.getElementById("AddFieldContainer");
+
+    // Reset all states first
+    approvedByDiv.style.display = "none";
+    asperSelect.style.display = "none";
+    attachSelect.style.display = "none";
+    fieldSelect.style.display = "none";
+
+    if (approvalSelect.value === "yes") {
+        approvedByDiv.style.display = "block";
+        asperSelect.style.display = "block";
+        attachSelect.querySelector('input').required = true;
+        fieldSelect.querySelector('select').required = true;
+    } else {
+      attachSelect.querySelector('input').required = false;
+      fieldSelect.querySelector('select').required = false;
+        }
+}
+
+function toggleasper(event) {
+    const approvalSelect = document.getElementById("AdditionalChargesApproval");
+    const fieldSelect = document.getElementById("AddFieldContainer");
+    const attachSelect = document.getElementById("AddAttachmentContainer");
+
+    // Get the current values
+    const approvalValue = approvalSelect.value;
+    const asperValue = event.target.value; // Get the value from the event    
+
+    // Only show fields if "Additional Charges Approval" is "Yes"
+    if (approvalValue === "yes") {
+        if (asperValue === "yes") {
+            attachSelect.style.display = 'block'; // Show Attachment
+            fieldSelect.style.display = 'none';
+            attachSelect.querySelector('input').required = true;    // Hide Remarks
+       
+        } else {
+            attachSelect.style.display = 'none';    // Hide Attachment
+            fieldSelect.style.display = 'block';     // Show Remarks
+            attachSelect.querySelector('input').required = false;    // Hide Remarks
+            fieldSelect.querySelector('input').required = true;
+        }
+    } else {
+        // Hide both if "Additional Charges Approval" is not "Yes"
+        attachSelect.style.display = 'none';
+        fieldSelect.style.display = 'none';
+        attachSelect.querySelector('input').required = false;    // Hide Remarks
+        fieldSelect.querySelector('input').required = false;
+    }
+}
+
+
+
+      function checkFileInput() {
+          var fileInput = document.getElementById('InvoiceAttachment');
+          var file = fileInput.files[0];
+          var allowedFormats = ['pdf', 'jpeg', 'jpg', 'tif', 'tiff'];
+          var maxFileSize = 2 * 1024 * 1024; // 2MB
+
+          if (file) {
+              var fileExtension = file.name.split('.').pop().toLowerCase();
+              if (!allowedFormats.includes(fileExtension)) {
+                  alert("Please upload a file in one of the following formats: PDF, JPEG, JPG, TIF, TIFF");
+                  fileInput.value = ''; // Clear the file input value
+                  return false; // Prevent form submission
+              }
+              if (file.size > maxFileSize) {
+                  alert("File size exceeds 2MB.");
+                  fileInput.value = ''; // Clear the file input value
+                  return false; // Prevent form submission
+              }
+          }
+          return true; // Allow form submission
+      }
+
+      function updateDateLimits() {
+          var today = new Date().toISOString().split('T')[0];
+          var oneMonthBeforeNow = new Date();
+          oneMonthBeforeNow.setMonth(oneMonthBeforeNow.getMonth() - 1);
+          oneMonthBeforeNow = oneMonthBeforeNow.toISOString().split('T')[0];
+
+          var dateFields = document.querySelectorAll('input[type="date"]');
+          dateFields.forEach(function (field) {
+              field.setAttribute('max', today);
+              field.setAttribute('min', oneMonthBeforeNow);
+          });
+      }
+
+      function handleFormSubmission(event) {
+          // Update GST percentage to 0 if GST selection is "No"
+          if (applyGSTSelect.value === 'no') {
+              gstPercentageInput.value = '0';
+          }
+
+          // Perform file validation
+          if (!checkFileInput()) {
+              event.preventDefault(); // Prevent form submission if file validation fails
+          }
+      }
+
+      // Event listeners
+      
+      
+      applyGSTSelect.addEventListener('change', toggleGSTFields);
+      Approval.addEventListener('change', toggleApprovalFields);
+      additionalcharges.addEventListener('change', toggleAdditionalChargesFields);
+      advanceyesno.addEventListener('change', toggleAdvance);
+      additionalchargesapproval.addEventListener('change', toggleAdd);
+      asperpreviousapproval.addEventListener('change', toggleasper);
+      document.getElementById('Quantity').addEventListener('input', calculateTotalClaimAmount);
+      document.getElementById('Rate').addEventListener('input', calculateTotalClaimAmount);
+      document.getElementById('Amount').addEventListener('input', calculateTotalClaimAmount);
+      gstPercentageInput.addEventListener('input', calculateTotalClaimAmount);
+      tobededucted.addEventListener('input', calculateTotalClaimAmount); 
+      document.getElementById('AdvanceAmount').addEventListener('input', calculateTotalClaimAmount);
+
+      
+      form.addEventListener('submit', handleFormSubmission);
+
+      // Initialize
+      calculateTotalClaimAmount(); // Initial calculation
+      updateDateLimits(); // Set date limits
+
+      // Allow the goBack function to be used globally
+      window.goBack = function() {
+          window.history.back();
+      };
+  });
+  const claims = ({{ claims_data|safe }});
+
+function filterClaims() {
+    const vendorSelection = document.getElementById('VendorSelection').value;
+
+    // Reset the blocked dates
+    const blockedDates = [];
+
+    // Filter claims based on selected vendor
+    claims.forEach(claim => {
+        if (claim.vendorName === vendorSelection) {
+            blockedDates.push({
+                start: new Date(claim.fromDate),
+                end: new Date(claim.toDate)
+            });
+        }
+    });
+
+    updateDateInputs(blockedDates);
+}
+
+function updateDateInputs(blocked) {
+    const disabledDates = [];
+
+    // Create an array of disabled dates
+    blocked.forEach(block => {
+        let currentDate = new Date(block.start);
+        while (currentDate <= block.end) {
+            disabledDates.push(currentDate.toISOString().split('T')[0]); // Format to YYYY-MM-DD
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+    });
+
+    // Initialize Flatpickr for From Date
+    flatpickr("#FromDate", {
+        disable: disabledDates,
+        onChange: validateToDate // Add validation function
+    });
+
+    // Initialize Flatpickr for To Date
+    flatpickr("#ToDate", {
+        disable: disabledDates,
+        onChange: validateToDate // Add validation function
+    });
+}
+
+function validateToDate() {
+    const fromDateInput = document.getElementById('FromDate')._flatpickr; // Access the Flatpickr instance
+    const toDateInput = document.getElementById('ToDate')._flatpickr;
+
+    if (fromDateInput.selectedDates.length > 0 && toDateInput.selectedDates.length > 0) {
+        const fromDate = fromDateInput.selectedDates[0];
+        const toDate = toDateInput.selectedDates[0];
+
+        if (toDate < fromDate) {
+            alert("End Date cannot be earlier than Start Date.");
+            toDateInput.clear(); // Clear the invalid selection
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const projectSelect = document.getElementById('Project');
+    const subprojectSelect = document.getElementById('Subproject');
+
+    projectSelect.addEventListener('change', function () {
+        const selectedProjectId = projectSelect.value;
+
+        if (selectedProjectId) {
+            // Send an AJAX request to get the subprojects for the selected project
+            fetch(`/get-subprojects/?project_id=${selectedProjectId}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch subprojects');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.subprojects && data.subprojects.length > 0) {
+                    // Clear the current subproject options
+                    subprojectSelect.innerHTML = '<option value="" disabled selected>Select a Sub-Project</option>';
+
+                    // Populate the subproject dropdown with the returned subprojects
+                    data.subprojects.forEach(function (subproject) {
+                        const option = document.createElement('option');
+                        option.value = subproject.subproject_title;
+                        option.textContent = subproject.subproject_title;
+                        subprojectSelect.appendChild(option);
+                    });
+
+                    // Add the 'required' attribute to the Subproject dropdown
+                    subprojectSelect.setAttribute('required', 'required');
+                } else {
+                    // Handle the case where no subprojects are returned
+                    subprojectSelect.innerHTML = '<option value="" disabled selected>No subprojects found</option>';
+
+                    // Remove the 'required' attribute if no subprojects are found
+                    subprojectSelect.removeAttribute('required');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching subprojects:', error);
+                subprojectSelect.innerHTML = '<option value="" disabled selected>Error fetching subprojects</option>';
+
+                // Remove the 'required' attribute on error
+                subprojectSelect.removeAttribute('required');
+            });
+        } else {
+            // If no project is selected, clear the subproject dropdown and remove 'required'
+            subprojectSelect.innerHTML = '<option value="" disabled selected>Select a Sub-Project</option>';
+            subprojectSelect.removeAttribute('required');
+        }
+    });
+});
+</script>
+
+{% endblock %}
+
+

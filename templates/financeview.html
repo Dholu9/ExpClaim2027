@@ -1,0 +1,2264 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load l10n %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<style>
+  .claims-wrap {
+    --sidebar-offset: 16.66vw;
+    margin-left: var(--sidebar-offset);
+    width: calc(100vw - var(--sidebar-offset) - 24px);
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  @media (max-width: 992px) {
+    .claims-wrap { margin-left: 0; width: 100%; }
+  }
+
+  .toolbar button:focus-visible,
+  .toolbar select:focus-visible,
+  .col-toggle summary:focus-visible,
+  #claims-table input:focus-visible,
+  #claims-table select:focus-visible,
+  #claims-table button:focus-visible,
+  #claims-table a:focus-visible,
+  #search-form input:focus-visible,
+  #search-form button:focus-visible {
+    outline: 3px solid #1e6fd9;
+    outline-offset: 2px;
+  }
+
+  .table-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: scroll;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  th, td { width: 140px; }
+  th.col-select, td.col-select { width: 56px; }
+  th.col-action, td.col-action { width: 230px; }
+
+  td {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: rgb(74, 75, 71);
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+    border-right: 2px solid #380a0a;
+    vertical-align: middle;
+  }
+
+  th {
+    position: sticky;
+    top: 0;
+    background-color: rgb(207, 219, 224);
+    text-align: center;
+    vertical-align: middle;
+    font-size: 12px;
+    font-weight: bold;
+    color: rgb(43, 26, 53);
+    overflow: visible;
+    white-space: nowrap;
+    padding: 8px 6px;
+    z-index: 10;
+  }
+
+  /* ===== Split rows (purple tint + purple left bar) ===== */
+  #claims-table tbody tr.split-row > td {
+    background-color: #f3eefc;
+    box-shadow: inset 0 0 0 9999px #f3eefc;
+  }
+  #claims-table tbody tr.split-row > td:first-child {
+    box-shadow: inset 4px 0 0 #6f42c1, inset 0 0 0 9999px #f3eefc;
+  }
+
+  /* ===== Row highlight =====
+     1) hover: row under the mouse (yellow)
+     2) active: row you clicked / are working in (blue). It stays until you click another row. */
+  #claims-table tbody tr {
+    cursor: pointer;
+  }
+  #claims-table tbody tr:hover > td {
+    background-color: #fff4c2 !important;
+    box-shadow: inset 0 0 0 9999px #fff4c2 !important;
+  }
+  #claims-table tbody tr:hover > td:first-child {
+    box-shadow: inset 4px 0 0 #f0b400, inset 0 0 0 9999px #fff4c2 !important;
+  }
+
+  #claims-table tbody tr.row-active > td,
+  #claims-table tbody tr.row-active:hover > td {
+    background-color: #cfe5ff !important;
+    box-shadow: inset 0 0 0 9999px #cfe5ff !important;
+    border-top: 1px solid #1e6fd9;
+    border-bottom: 1px solid #1e6fd9;
+  }
+  #claims-table tbody tr.row-active > td:first-child,
+  #claims-table tbody tr.row-active:hover > td:first-child {
+    box-shadow: inset 5px 0 0 #1e6fd9, inset 0 0 0 9999px #cfe5ff !important;
+  }
+
+  .hr-approved { color: #146c43; font-weight: 600; }
+  .hr-rejected { color: #b02a37; font-weight: 600; }
+  .hr-hold     { color: #8a5a00; font-weight: 600; }
+  .hr-pending  { color: #495057; font-weight: 600; }
+
+  .comments-cell-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .comments-input {
+    width: 100px;
+    padding: 4px 6px;
+    font-size: 13px;
+    border: 1px solid #767676;
+    border-radius: 4px;
+  }
+
+  .comments-input[readonly] { background-color: #f4f4f4; }
+
+  .comment-info-btn {
+    display: none;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    border: none;
+    background-color: #1e6fd9;
+    color: #fff;
+    font-size: 13px;
+    font-style: italic;
+    font-weight: bold;
+    line-height: 24px;
+    text-align: center;
+    padding: 0;
+    cursor: help;
+    position: relative;
+  }
+
+  .comment-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    top: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2b1a35;
+    color: #fff;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: normal;
+    white-space: normal;
+    width: 200px;
+    line-height: 1.4;
+    z-index: 20;
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .comment-info-btn:hover .comment-tooltip,
+  .comment-info-btn:focus .comment-tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+  .comment-info-btn.tooltip-dismissed .comment-tooltip {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .comment-tooltip { transition: none; }
+  }
+
+  .finance-status-dropdown {
+    width: 110px;
+    padding: 4px 6px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #767676;
+  }
+
+  /* ===== dropdowns for Nature of Expense / Accounting Location ===== */
+  .nature-expense-dropdown,
+  .accounting-location-dropdown {
+    width: 100%;
+    max-width: 120px;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid #767676;
+    background-color: #fff;
+    text-overflow: ellipsis;
+  }
+  .nature-expense-dropdown:focus,
+  .accounting-location-dropdown:focus {
+    border-color: #1e6fd9;
+  }
+
+  /* ===== Working Location text input ===== */
+  .worklocation-cell-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .worklocation-input {
+    width: 100%;
+    max-width: 120px;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid #767676;
+    background-color: #fff;
+    text-overflow: ellipsis;
+  }
+  .worklocation-input:focus { border-color: #1e6fd9; }
+
+  .amt-input {
+    width: 100px;
+    padding: 4px 6px;
+    font-size: 13px;
+    text-align: right;
+    border: 1px solid #767676;
+    border-radius: 4px;
+  }
+
+  .amt-input.required-missing {
+    border: 2px solid #b02a37;
+    background-color: #fdecea;
+  }
+
+  .amt-input[readonly] { background-color: #f4f4f4; }
+
+  .hold-fin-amt {
+    width: 100px;
+    padding: 4px 6px;
+    font-size: 13px;
+    text-align: right;
+    border: 1px solid #767676;
+    border-radius: 4px;
+  }
+
+  .field-error {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: #b02a37;
+    font-weight: 600;
+  }
+
+  .paid-date {
+    width: 116px;
+    max-width: 100%;
+    height: 28px;
+    padding: 2px 4px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid #767676;
+    border-radius: 4px;
+    background-color: #fff;
+  }
+
+  /* ===== Action column (checkbox + autosave status + split / remove) ===== */
+  .action-cell {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .action-cell .action-select-mirror {
+    margin: 0;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+  }
+
+  .autosave-status {
+    font-size: 11px;
+    color: #146c43;
+    font-weight: 600;
+    min-width: 70px;
+    text-align: left;
+  }
+  .autosave-status.pending { color: #6c757d; }
+  .autosave-status.error { color: #b02a37; }
+
+  .split-btn, .remove-split-btn {
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+  }
+  .split-btn { background-color: #6f42c1; }
+  .split-btn:hover { background-color: #59359a; }
+  .remove-split-btn { background-color: #b02a37; }
+  .remove-split-btn:hover { background-color: #8c1f2b; }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar button,
+  .col-toggle summary {
+    padding: 8px 14px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #fff;
+  }
+
+  .toolbar select {
+    padding: 6px 8px;
+    font-size: 14px;
+    border: 1px solid #767676;
+    border-radius: 5px;
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .finance-filter-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #eef6ff;
+    border: 1px solid #b9d5f2;
+    border-radius: 999px;
+    padding: 4px 10px 4px 14px;
+  }
+
+  .finance-filter-wrap label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e6fd9;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .finance-filter-select {
+    padding: 5px 10px;
+    font-size: 13px;
+    border: 1px solid #b9d5f2;
+    border-radius: 999px;
+    background: #fff;
+    color: #2c3e50;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .finance-filter-select:hover { border-color: #1e6fd9; }
+  .finance-filter-select:focus {
+    border-color: #1e6fd9;
+    box-shadow: 0 0 0 3px rgba(30, 111, 217, 0.2);
+  }
+
+  /* ===== TAT / Approved date filter ===== */
+  .date-filter-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #eef6ff;
+    border: 1px solid #b9d5f2;
+    border-radius: 999px;
+    padding: 4px 14px;
+  }
+  .date-filter-wrap label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e6fd9;
+    white-space: nowrap;
+    margin: 0;
+  }
+  .date-filter-wrap select,
+  .date-filter-wrap input[type="date"] {
+    padding: 4px 8px;
+    font-size: 13px;
+    border: 1px solid #b9d5f2;
+    border-radius: 999px;
+    background: #fff;
+    color: #2c3e50;
+  }
+  .date-filter-wrap select:focus-visible,
+  .date-filter-wrap input:focus-visible {
+    outline: 3px solid #1e6fd9;
+    outline-offset: 2px;
+  }
+
+  #bulk-approve-btn { background-color: #1e7e34; }
+  #bulk-approve-btn:hover { background-color: #19692c; }
+  #bulk-approve-btn:disabled { background-color: #9bd0ac; cursor: not-allowed; }
+  #download-excel-btn { background-color: #1e6fd9; }
+  #download-excel-btn:hover { background-color: #1758ab; }
+  #transfer-paid-btn { background-color: #6f42c1; }
+  #transfer-paid-btn:hover { background-color: #59359a; }
+  #transfer-paid-btn:disabled { background-color: #b9a6dc; cursor: not-allowed; }
+  #clear-selection-btn, #cols-show-all { background-color: #5c636a; }
+  #clear-selection-btn:hover, #cols-show-all:hover { background-color: #494f54; }
+
+  .col-toggle { position: relative; }
+  .col-toggle summary {
+    background-color: #5c636a;
+    list-style: none;
+  }
+  .col-toggle summary::-webkit-details-marker { display: none; }
+  .col-toggle[open] summary { background-color: #494f54; }
+
+  .col-toggle-panel {
+    position: absolute;
+    z-index: 30;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    min-width: 230px;
+    max-height: 340px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #767676;
+    border-radius: 6px;
+    padding: 10px 14px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+  .col-toggle-panel .form-check { white-space: nowrap; }
+
+  #selected-count { font-size: 13px; color: #444; }
+
+  .visually-hidden-fallback {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    td { font-size: 12px; padding: 10px; }
+    th { font-size: 12px; }
+  }
+
+  /* ===== Editable ExpDetails (autosave) ===== */
+  .expdetails-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 12px;
+    border: 1px solid #767676;
+    border-radius: 4px;
+    background-color: #fff;
+    text-overflow: ellipsis;
+  }
+  .expdetails-input:focus { border-color: #1e6fd9; }
+  .expdetails-input.exp-saving { border-color: #6c757d; }
+  .expdetails-input.exp-saved  { border-color: #146c43; box-shadow: 0 0 0 2px rgba(20, 108, 67, 0.25); }
+  .expdetails-input.exp-error  { border: 2px solid #b02a37; background-color: #fdecea; }
+
+  #bulk-paid-date-btn { background-color: #6f42c1; }
+  #bulk-paid-date-btn:hover { background-color: #59359a; }
+
+</style>
+
+<div class="claims-wrap">
+  {% csrf_token %}
+
+  <div id="live-region" class="visually-hidden visually-hidden-fallback" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <h2 class="h5 mt-4" id="search-heading">Search by username</h2>
+
+  <form id="search-form" role="search" aria-labelledby="search-heading" class="mb-3">
+    <label for="username-input" class="visually-hidden visually-hidden-fallback">Username</label>
+    <input type="text" id="username-input" placeholder="Enter username" autocomplete="off">
+
+    <!-- NEW: claim number search -->
+    <label for="claim-input" class="visually-hidden visually-hidden-fallback">Claim number</label>
+    <input type="text" id="claim-input" placeholder="Search claim number" autocomplete="off">
+
+    <button type="submit" id="search-button">Search</button>
+  </form>
+
+  <div class="toolbar" role="group" aria-label="Table actions">
+    <label for="select-all-checkbox" style="font-size:14px;">
+      <input type="checkbox" id="select-all-checkbox"> Select all shown
+    </label>
+
+    <div class="finance-filter-wrap">
+      <label for="select-by-finance-status">Finance status</label>
+      <select id="select-by-finance-status" class="finance-filter-select">
+        <option value="">All statuses</option>
+        <option value="__blank__">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Hold">Hold</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+    </div>
+
+    <div class="date-filter-wrap" role="group" aria-label="Filter by approved date">
+      <label for="tat-filter">TAT (since approved)</label>
+      <select id="tat-filter">
+        <option value="">All</option>
+        <option value="0-3">0 &ndash; 3 days</option>
+        <option value="4-7">4 &ndash; 7 days</option>
+        <option value="8-15">8 &ndash; 15 days</option>
+        <option value="16-30">16 &ndash; 30 days</option>
+        <option value="31-">Over 30 days</option>
+      </select>
+
+      <label for="approved-from">From</label>
+      <input type="date" id="approved-from">
+      <label for="approved-to">To</label>
+      <input type="date" id="approved-to">
+    </div>
+
+    <button type="button" id="clear-selection-btn">Clear filters and selection</button>
+
+    <button type="button" id="bulk-approve-btn" disabled>Bulk approve selected</button>
+    <button type="button" id="transfer-paid-btn" disabled aria-label="Copy payable amount to paid for selected claims">Paid</button>
+    <div class="date-filter-wrap" role="group" aria-label="Set paid date for selected claims">
+      <label for="bulk-paid-date">Paid date</label>
+      <input type="date" id="bulk-paid-date">
+      <button type="button" id="bulk-paid-date-btn">Set paid date</button>
+    </div>
+    <button type="button" id="download-excel-btn">Download as Excel</button>
+
+    <details class="col-toggle" id="column-toggle">
+      <summary>Show / hide columns</summary>
+      <fieldset class="col-toggle-panel">
+        <legend class="visually-hidden visually-hidden-fallback">Choose which columns are visible</legend>
+        <div class="mb-2">
+          <button type="button" id="cols-show-all" class="btn btn-sm text-white">Show all columns</button>
+        </div>
+        <div id="col-toggle-list"></div>
+      </fieldset>
+    </details>
+
+    <span id="selected-count"></span>
+  </div>
+
+  <p id="scroll-hint" style="font-size:13px;color:#444;margin-bottom:4px;">Scroll the table sideways to see all columns, or hide columns you do not need. Click a row to keep it highlighted. Use Split to add another row for the same claim (it is saved only after you choose a finance status). Changes save automatically, even if you refresh the page.</p>
+
+  <div class="table-container" tabindex="0" role="region" aria-labelledby="table-caption">
+  <table class="table table-striped" id="claims-table">
+    <caption id="table-caption" class="visually-hidden visually-hidden-fallback">
+      Expense claims awaiting finance review
+    </caption>
+    <thead style="background-color:rgb(207, 219, 224);">
+      <tr>
+        <th scope="col" class="col-select">Select</th>
+        <th scope="col">ClaimNo</th>
+        <th scope="col">ApprovedDt.</th>
+        <th scope="col">ApprovedBy</th>
+        <th scope="col">UserName</th>
+        <th scope="col">DTNo</th>
+        <th scope="col">Project</th>
+        <th scope="col">Sub-Project</th>
+        <th scope="col">Dept</th>
+        <th scope="col">Manager</th>
+        <th scope="col">ExpDetails</th>
+        <th scope="col">TotalClaimAmt</th>
+        <th scope="col">HoldAmountHR</th>
+        <th scope="col">RejectedAmountHR</th>
+        <th scope="col">AdvanceDeduct</th>
+        <th scope="col">HRRemarks</th>
+        <th scope="col">HRStatus</th>
+        <th scope="col">Appr.Amt</th>
+        <th scope="col">NatureOfExpense</th>
+        <th scope="col">AccountingLocation</th>
+        <th scope="col">WorkingLocation</th>
+        <th scope="col">HoldAmountFinance</th>
+        <th scope="col">HoldReleaseAmt</th>
+        <th scope="col">RejectedAmt</th>
+        <th scope="col">FinanceRemarks</th>
+        <th scope="col">FinanceStatus</th>
+        <th scope="col">PayableAmt</th>
+        <th scope="col">Paid</th>
+        <th scope="col">PaidDate</th>
+        <th scope="col" class="col-action">Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for n in parentclaimdata %}
+      {% with n.claimstatus_set.first as status %}
+      {% with n.child_models.first as child %}
+      <tr style="background-color:rgb(239, 244, 247);"
+          data-claim-no="{{ n.ClaimNumber }}"
+          data-row-uid="{{ n.ClaimNumber }}"
+          data-username="{{ n.user.first_name }}"
+          data-approved-date="{{ n.StatusDateAccounts|date:'Y-m-d' }}"
+          data-hr-status="{{ status.accountstatus|default:'Pending' }}"
+          data-hr-approved="{{ status.approvedamount|default:0|unlocalize }}"
+          data-hr-hold="{{ status.holdamounthr|default:0|unlocalize }}"
+          data-hr-rejected="{{ status.rejectamounthr|default:0|unlocalize }}"
+          data-total-claim="{{ child.TotalClaimAmount|default:0|unlocalize }}"
+          data-original-hold-fin="{{ status.originalholdfin|default:status.holdamountfin|default:0|unlocalize }}"
+          data-finance-saved="{% if status.financestatus %}1{% else %}0{% endif %}"
+          data-rej-manual="{% if status.financestatus %}1{% else %}0{% endif %}">
+
+        <td class="col-select">
+          <input type="checkbox" class="row-select-checkbox"
+                 aria-label="Select claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <a href="{% url 'entereddata4' n.ClaimNumber %}">{{ n.ClaimNumber }}</a>
+        </td>
+
+        <td>{{ n.StatusDateAccounts|date:"M. d, Y" }}</td>
+        <td>{{ status.approvedby }}</td>
+        <td>{{ n.user.first_name }}</td>
+        <td>{{ n.DTNumber }}</td>
+        <td>{{ n.Project }}</td>
+        <td>{{ n.Subproject }}</td>
+        <td>{{ n.Department }}</td>
+        <td>{{ n.Manager }}</td>
+
+        <!-- EDITABLE EXPENSE DETAILS (autosave) -->
+        <td>
+          <input type="text" class="expdetails-input"
+                 value="{{ n.ExpenseDetails|default_if_none:'' }}"
+                 title="{{ n.ExpenseDetails|default_if_none:'' }}"
+                 aria-label="Expense details for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <!-- Total claim amount: plain text on the main row, an editable box on split rows (set by the script) -->
+        <td class="total-claim-cell">{{ child.TotalClaimAmount|default:0 }}</td>
+
+        <td class="hr-hold-cell">{{ status.holdamounthr|default:0 }}</td>
+
+        <td class="hr-reject-cell">{{ status.rejectamounthr|default:0 }}</td>
+        <td class="hr-advance-cell">{{ status.advancededuct|default:0 }}</td>
+
+        <td>
+          <div class="comments-cell-wrap">
+            <input type="text" class="comments-input hr-comment" readonly
+                   value="{{ status.accountscomments|default_if_none:'' }}"
+                   aria-label="HR remarks for claim {{ n.ClaimNumber }}">
+            <button type="button" class="comment-info-btn" aria-label="Show full HR remarks">
+              i
+              <span class="comment-tooltip" role="tooltip"></span>
+            </button>
+          </div>
+        </td>
+
+        <td class="hr-status-cell">
+          {% if status.accountstatus == 'Approved' %}
+            <span class="hr-approved">Reviewed</span>
+          {% else %}
+            <span class="hr-pending">Pending</span>
+          {% endif %}
+        </td>
+
+        <td class="hr-approved-cell">{{ status.approvedamount|default:0 }}</td>
+
+        <td>
+          <select class="nature-expense-dropdown"
+                  aria-label="Nature of expense for claim {{ n.ClaimNumber }}">
+            <option value="" {% if not status.NatureOfExpense %}selected{% endif %}>Select</option>
+            <option value="Field Survey Expense"        {% if status.NatureOfExpense == 'Field Survey Expense' %}selected{% endif %}>Field Survey Expense</option>
+            <option value="Printing &amp; Stationary"   {% if status.NatureOfExpense == 'Printing & Stationary' %}selected{% endif %}>Printing &amp; Stationary</option>
+            <option value="Staff Welfare"               {% if status.NatureOfExpense == 'Staff Welfare' %}selected{% endif %}>Staff Welfare</option>
+            <option value="Internet &amp; Web charges"  {% if status.NatureOfExpense == 'Internet & Web charges' %}selected{% endif %}>Internet &amp; Web charges</option>
+            <option value="Business Promotion Expenses" {% if status.NatureOfExpense == 'Business Promotion Expenses' %}selected{% endif %}>Business Promotion Expenses</option>
+            <option value="Office Expense"              {% if status.NatureOfExpense == 'Office Expense' %}selected{% endif %}>Office Expense</option>
+            <option value="Travel Expense"              {% if status.NatureOfExpense == 'Travel Expense' %}selected{% endif %}>Travel Expense</option>
+            <option value="Cleaning &amp; Housekeeping Expense" {% if status.NatureOfExpense == 'Cleaning & Housekeeping Expense' %}selected{% endif %}>Cleaning &amp; Housekeeping Expense</option>
+            <option value="Courier Charges"             {% if status.NatureOfExpense == 'Courier Charges' %}selected{% endif %}>Courier Charges</option>
+            <option value="Software Subscription Expense" {% if status.NatureOfExpense == 'Software Subscription Expense' %}selected{% endif %}>Software Subscription Expense</option>
+            <option value="Business Promotion"          {% if status.NatureOfExpense == 'Business Promotion' %}selected{% endif %}>Business Promotion</option>
+            <option value="Food Expense"                {% if status.NatureOfExpense == 'Food Expense' %}selected{% endif %}>Food Expense</option>
+          </select>
+        </td>
+
+        <td>
+          <select class="accounting-location-dropdown"
+                  aria-label="Accounting location for claim {{ n.ClaimNumber }}">
+            <option value="" {% if not status.AccountingLocation %}selected{% endif %}>Select</option>
+            <option value="Haryana"            {% if status.AccountingLocation == 'Haryana' %}selected{% endif %}>Haryana</option>
+            <option value="Karnataka"          {% if status.AccountingLocation == 'Karnataka' %}selected{% endif %}>Karnataka</option>
+            <option value="Salem"              {% if status.AccountingLocation == 'Salem' %}selected{% endif %}>Salem</option>
+            <option value="Jammu and Kashmir"  {% if status.AccountingLocation == 'Jammu and Kashmir' %}selected{% endif %}>Jammu and Kashmir</option>
+          </select>
+        </td>
+
+        <td>
+          <div class="worklocation-cell-wrap">
+            <input type="text" class="worklocation-input" maxlength="100"
+                   placeholder="Working location"
+                   value="{{ status.WorkingLocation|default_if_none:'' }}"
+                   aria-label="Working location for claim {{ n.ClaimNumber }}">
+          </div>
+        </td>
+
+        <td>
+          <input type="number" step="0.01" min="0"
+                 class="amt-input hold-fin-amt"
+                 value="{{ status.holdamountfin|default:0|unlocalize }}"
+                 aria-label="Hold amount finance for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <input type="number" step="0.01" min="0" class="amt-input release-hold" value="{{ status.releasehold|default:0|unlocalize }}"
+                 aria-label="Hold release amount for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <input type="number" step="0.01" min="0" class="amt-input rej-amt"
+                 value="{% if status.financestatus %}{{ status.rejectamountfin|default:0|unlocalize }}{% else %}{{ status.rejectamounthr|default:0|unlocalize }}{% endif %}"
+                 aria-label="Rejected amount for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <div class="comments-cell-wrap">
+            <input type="text" class="comments-input finance-comment" placeholder="Add comment"
+                   value="{{ status.financecomments|default_if_none:'' }}"
+                   aria-label="Finance remarks for claim {{ n.ClaimNumber }} (maximum 20 words)">
+            <button type="button" class="comment-info-btn" aria-label="Show full finance remarks">
+              i
+              <span class="comment-tooltip" role="tooltip"></span>
+            </button>
+          </div>
+        </td>
+
+        <td>
+          <select class="finance-status-dropdown" aria-label="Finance status for claim {{ n.ClaimNumber }}">
+            <option value="" {% if not status.financestatus %}selected{% endif %}>Select</option>
+            <option value="Approved" {% if status.financestatus == 'Approved' %}selected{% endif %}>Approved</option>
+            <option value="Hold" {% if status.financestatus == 'Hold' %}selected{% endif %}>Hold</option>
+            <option value="Rejected" {% if status.financestatus == 'Rejected' %}selected{% endif %}>Rejected</option>
+          </select>
+        </td>
+
+        <td>
+          <input type="number" step="0.01" min="0" class="amt-input payable-amt" value="{{ status.payableamount|default:0|unlocalize }}"
+                 aria-label="Payable amount for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <input type="number" step="0.01" min="0" class="amt-input paid-amt" value="{{ status.paid|default:0|unlocalize }}"
+                 aria-label="Paid amount for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td>
+          <input type="date" class="paid-date" value="{{ status.paidon|date:'Y-m-d' }}"
+                 aria-label="Paid date for claim {{ n.ClaimNumber }}">
+        </td>
+
+        <td class="col-action">
+          <div class="action-cell">
+            <input type="checkbox" class="action-select-mirror"
+                   aria-label="Select claim {{ n.ClaimNumber }} from the Action column">
+            <span class="autosave-status" role="status"></span>
+            <button type="button" class="split-btn"
+                    aria-label="Split claim {{ n.ClaimNumber }} into another row">Split</button>
+          </div>
+        </td>
+
+      </tr>
+      {% endwith %}
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <!-- Saved splits from the database. The script turns each one into a split row on load.
+       Nothing here is created automatically: only splits that already exist are listed. -->
+  <div id="split-seeds" hidden>
+    {% for n in parentclaimdata %}
+      {% for s in n.splits.all %}
+      <span class="split-seed"
+            data-claim-no="{{ n.ClaimNumber }}"
+            data-split-id="{{ s.pk }}"
+            data-finance-status="{{ s.financestatus|default_if_none:'' }}"
+            data-finance-remarks="{{ s.financecomments|default_if_none:'' }}"
+            data-hold-fin="{{ s.holdamountfin|default:0|unlocalize }}"
+            data-original-hold-fin="{{ s.holdamountfin|default:0|unlocalize }}"
+            data-release="{{ s.releasehold|default:0|unlocalize }}"
+            data-rejected="{{ s.rejectamountfin|default:0|unlocalize }}"
+            data-payable="{{ s.payableamount|default:0|unlocalize }}"
+            data-paid="{{ s.paid|default:0|unlocalize }}"
+            data-paid-date="{{ s.paidon|date:'Y-m-d' }}"  
+            data-total-claim="{{ s.TotalClaimAmount|default:0|unlocalize }}"
+            data-approved="{{ s.approvedamount|default:0|unlocalize }}"
+            data-location="{{ s.AccountingLocation|default_if_none:'' }}"
+            data-working="{{ s.WorkingLocation|default_if_none:'' }}"></span>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+  
+    var SAVE_URL_TEMPLATE = "{% url 'save_finance_claim' 0 %}".replace(/0\/$/, '__CLAIM__/');
+    var SPLIT_SAVE_URL_TEMPLATE = "{% url 'save_finance_split' 0 %}".replace(/0\/$/, '__CLAIM__/');
+    var SPLIT_DELETE_URL_TEMPLATE = "{% url 'delete_finance_split' 0 %}".replace(/0\/$/, '__SPLIT__/');
+    var AUTOSAVE_DELAY = 500;
+    var DRAFT_PREFIX = 'financeClaimDraft:';
+    var DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+    var VIEW_STATE_KEY = 'financeClaimsViewState';
+  
+    var table = document.getElementById('claims-table');
+    var liveRegion = document.getElementById('live-region');
+    var errorCounter = 0;
+    var tooltipCounter = 0;
+    var splitCounter = 0;
+    var activeRow = null;
+  
+    function toNum(val) {
+      var n = parseFloat(val);
+      return isNaN(n) ? 0 : n;
+    }
+  
+    function announce(msg) {
+      liveRegion.textContent = '';
+      setTimeout(function () { liveRegion.textContent = msg; }, 50);
+    }
+  
+    function allRows() {
+      return Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+    }
+  
+    function visibleRows() {
+      return allRows().filter(function (r) { return r.style.display !== 'none'; });
+    }
+  
+    function isSplitRow(row) {
+      return row.classList.contains('split-row');
+    }
+  
+    function isRowChecked(row) {
+      var a = row.querySelector('td.col-select .row-select-checkbox');
+      var b = row.querySelector('.action-select-mirror');
+      return (a && a.checked) || (b && b.checked);
+    }
+  
+    function checkedRows() {
+      return visibleRows().filter(isRowChecked);
+    }
+  
+    function setRowChecked(row, isChecked) {
+      var a = row.querySelector('td.col-select .row-select-checkbox');
+      var b = row.querySelector('.action-select-mirror');
+      if (a) a.checked = isChecked;
+      if (b) b.checked = isChecked;
+    }
+  
+    // ---------------- Active (clicked) row highlight ----------------
+    // The clicked row stays highlighted until another row is clicked.
+  
+    function setActiveRow(row) {
+      if (activeRow === row) return;
+      if (activeRow) activeRow.classList.remove('row-active');
+      activeRow = row || null;
+      if (activeRow) activeRow.classList.add('row-active');
+    }
+  
+    function rowFromEvent(e) {
+      var tr = e.target.closest ? e.target.closest('tr') : null;
+      if (!tr || !table.contains(tr) || tr.parentElement.tagName !== 'TBODY') return null;
+      return tr;
+    }
+  
+    // click anywhere on the row (any cell, input, dropdown, checkbox ...)
+    table.addEventListener('click', function (e) {
+      var tr = rowFromEvent(e);
+      if (tr) setActiveRow(tr);
+    });
+    // keyboard: tabbing into any field of a row also makes it the active row
+    table.addEventListener('focusin', function (e) {
+      var tr = rowFromEvent(e);
+      if (tr) setActiveRow(tr);
+    });
+  
+    function setInvalid(input, isBad, message) {
+      input.classList.toggle('required-missing', isBad);
+      input.setAttribute('aria-invalid', isBad ? 'true' : 'false');
+      var holder = input.parentElement;
+      var err = holder.querySelector('.field-error[data-for="' + (input.dataset.errId || '') + '"]');
+      if (!err && isBad) {
+        errorCounter += 1;
+        input.dataset.errId = 'err-' + errorCounter;
+        err = document.createElement('span');
+        err.className = 'field-error';
+        err.id = input.dataset.errId;
+        err.setAttribute('data-for', input.dataset.errId);
+        holder.appendChild(err);
+      }
+      if (err) {
+        err.textContent = isBad ? message : '';
+        if (isBad) {
+          input.setAttribute('aria-describedby', err.id);
+        } else {
+          input.removeAttribute('aria-describedby');
+        }
+      }
+    }
+  
+    function lockField(input, value) {
+      input.readOnly = true;
+      input.value = value;
+      setInvalid(input, false, '');
+    }
+  
+    function getRowFields(row) {
+      return {
+        statusDropdown: row.querySelector('.finance-status-dropdown'),
+        holdFinAmt: row.querySelector('.hold-fin-amt'),
+        releaseHold: row.querySelector('.release-hold'),
+        rejectedAmt: row.querySelector('.rej-amt'),
+        payableAmt: row.querySelector('.payable-amt'),
+        paidAmt: row.querySelector('.paid-amt'),
+        natureDropdown: row.querySelector('.nature-expense-dropdown'),
+        locationDropdown: row.querySelector('.accounting-location-dropdown'),
+        workingLocation: row.querySelector('.worklocation-input'),
+        totalClaim: row.querySelector('.split-total-claim')   // only exists on split rows
+      };
+    }
+  
+    function getHrApproved(row) { return toNum(row.dataset.hrApproved); }
+    function getHrHold(row) { return toNum(row.dataset.hrHold); }
+    function getHrRejected(row) { return toNum(row.dataset.hrRejected); }
+    function getHrAdvance(row) { return toNum(row.dataset.hrAdvance); }   // NEW
+  
+    // Auto-approve only when HR hold, HR rejected AND advance deduct are all 0.
+    function isAutoApprovable(row) {
+      return getHrHold(row) === 0 && getHrRejected(row) === 0 && getHrAdvance(row) === 0;   // CHANGED
+    }
+  
+    // Default (auto) value of RejectedAmt. The user may override it by typing.
+    function computeRejectedAmt(row) {
+      var f = getRowFields(row);
+      var release = f.releaseHold ? toNum(f.releaseHold.value) : 0;
+      var hrRejected = getHrRejected(row);
+  
+      if (release > 0) {
+        var hrHold = getHrHold(row);
+        return Math.max(0, hrHold - release);
+      }
+      return hrRejected;
+    }
+  
+    // RejectedAmt is editable. Only auto-fill it while the user has not typed
+    // their own value (row.dataset.rejManual !== '1').
+    function syncRejectedFromHr(row) {
+      var f = getRowFields(row);
+      if (!f.rejectedAmt) return;
+      f.rejectedAmt.readOnly = false;
+      if (row.dataset.rejManual === '1') return;
+      f.rejectedAmt.value = computeRejectedAmt(row).toFixed(2);
+      setInvalid(f.rejectedAmt, false, '');
+    }
+  
+    // PayableAmt = Appr.Amt + HoldReleaseAmt  (Appr.Amt is 0 on a split row)
+    function computePayable(row) {
+      var f = getRowFields(row);
+      var release = f.releaseHold ? toNum(f.releaseHold.value) : 0;
+      return (getHrApproved(row) + release).toFixed(2);
+    }
+  
+    function getOriginalHoldFin(row) {
+      var stored = row.dataset.originalHoldFin;
+      if (stored === undefined || stored === '') {
+        var f = getRowFields(row);
+        var cur = f.holdFinAmt ? toNum(f.holdFinAmt.value) : 0;
+        var release = f.releaseHold ? toNum(f.releaseHold.value) : 0;
+        row.dataset.originalHoldFin = (cur + release).toFixed(2);
+        return cur + release;
+      }
+      return toNum(stored);
+    }
+  
+    function applyHoldFinDeduction(row) {
+      var f = getRowFields(row);
+      if (!f.holdFinAmt) return;
+      var orig = getOriginalHoldFin(row);
+      var release = toNum(f.releaseHold.value);
+      var available = Math.max(0, orig - release);
+      if (document.activeElement !== f.holdFinAmt) {
+        f.holdFinAmt.value = available.toFixed(2);
+      }
+    }
+  
+    function applyAutoApproveIfEligible(row) {
+      // A split row always starts with a blank status; the user picks it.
+      if (isSplitRow(row)) return false;
+      if (!isAutoApprovable(row)) return false;
+      if (row.dataset.financeSaved === '1') return false;
+  
+      var f = getRowFields(row);
+      if (!f.statusDropdown) return false;
+      if (f.statusDropdown.value) return false;
+  
+      f.statusDropdown.value = 'Approved';
+  
+      if (f.releaseHold) {
+        f.releaseHold.value = '0';
+        f.releaseHold.readOnly = false;
+      }
+      syncRejectedFromHr(row);
+      if (f.payableAmt) {
+        f.payableAmt.value = computePayable(row);
+      }
+  
+      applyHoldFinDeduction(row);
+      return true;
+    }
+  
+    function applyStatusLogic(row) {
+      var f = getRowFields(row);
+      var status = f.statusDropdown.value;
+  
+      setInvalid(f.releaseHold, false, '');
+      syncRejectedFromHr(row);
+  
+      if (status === 'Approved') {
+        f.releaseHold.readOnly = false;
+        recalcFromRelease(row);
+      } else if (status === 'Hold') {
+        f.releaseHold.readOnly = false;
+        recalcFromRelease(row);
+      } else if (status === 'Rejected') {
+        lockField(f.releaseHold, 0);
+        syncRejectedFromHr(row);
+        recalcFromRejected(row);
+      } else {
+        f.releaseHold.readOnly = false;
+        f.payableAmt.value = computePayable(row);
+      }
+  
+      // PayableAmt = Appr.Amt + HoldReleaseAmt, whatever the finance status is
+      f.payableAmt.value = computePayable(row);
+  
+      applyHoldFinDeduction(row);
+    }
+  
+    function recalcFromRelease(row) {
+      var f = getRowFields(row);
+      var status = f.statusDropdown.value;
+      var release = toNum(f.releaseHold.value);
+      if (status === 'Hold' || status === 'Approved') {
+        setInvalid(f.releaseHold, release > getHrHold(row),
+                   'Cannot exceed HR hold amount (' + getHrHold(row).toFixed(2) + ')');
+      }
+  
+      f.payableAmt.value = computePayable(row);
+  
+      applyHoldFinDeduction(row);
+    }
+  
+    function recalcFromRejected(row) {
+      var f = getRowFields(row);
+      // release is locked to 0 when Rejected
+      f.payableAmt.value = computePayable(row);
+      applyHoldFinDeduction(row);
+    }
+  
+    function limitToTwentyWords(text) {
+      var words = text.split(/\s+/).filter(function (w) { return w.length > 0; });
+      return words.length > 20 ? words.slice(0, 20).join(' ') : text;
+    }
+  
+    function initCommentsField(wrap, limitWords) {
+      var input = wrap.querySelector('.comments-input');
+      var infoBtn = wrap.querySelector('.comment-info-btn');
+      var tooltip = wrap.querySelector('.comment-tooltip');
+      if (!input || !infoBtn || !tooltip) return;
+  
+      tooltipCounter += 1;
+      tooltip.id = 'comment-tip-' + tooltipCounter;
+      infoBtn.setAttribute('aria-describedby', tooltip.id);
+  
+      function syncTooltip() {
+        var val = input.value.trim();
+        tooltip.textContent = val;
+        infoBtn.style.display = val.length > 0 ? 'inline-block' : 'none';
+        infoBtn.classList.remove('tooltip-dismissed');
+      }
+  
+      if (limitWords) {
+        input.addEventListener('input', function () {
+          var limited = limitToTwentyWords(input.value);
+          if (limited !== input.value) input.value = limited;
+          syncTooltip();
+        });
+      }
+  
+      infoBtn.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') infoBtn.classList.add('tooltip-dismissed');
+      });
+      infoBtn.addEventListener('mouseleave', function () {
+        infoBtn.classList.remove('tooltip-dismissed');
+      });
+  
+      syncTooltip();
+    }
+  
+    // Unique key of a row: the claim number for the main row, claim:sID for a saved split,
+    // claim:nN for a split that has not been saved yet.
+    function rowKey(row) { return row.dataset.rowUid || row.dataset.claimNo; }
+  
+    function wireActionMirror(row) {
+      var firstCb = row.querySelector('td.col-select .row-select-checkbox');
+      var mirror  = row.querySelector('.action-select-mirror');
+      if (!mirror) return;
+  
+      if (firstCb) {
+        firstCb.addEventListener('change', function () {
+          mirror.checked = firstCb.checked;
+        });
+      }
+      mirror.addEventListener('change', function () {
+        if (firstCb) firstCb.checked = mirror.checked;
+        updateSelectionState();
+      });
+  
+      if (firstCb) mirror.checked = firstCb.checked;
+    }
+  
+    function applySavedLocks(row) {
+      var f = getRowFields(row);
+      var st = f.statusDropdown.value;
+      if (st === 'Rejected') f.releaseHold.readOnly = true;
+      // RejectedAmt stays editable even after save.
+      if (f.rejectedAmt) f.rejectedAmt.readOnly = false;
+    }
+  
+    function initRow(row) {
+      var f = getRowFields(row);
+  
+      initCommentsField(row.querySelector('.hr-comment').closest('.comments-cell-wrap'), false);
+      initCommentsField(row.querySelector('.finance-comment').closest('.comments-cell-wrap'), true);
+  
+      syncRejectedFromHr(row);
+  
+      f.statusDropdown.addEventListener('change', function () {
+        applyStatusLogic(row);
+      });
+      f.releaseHold.addEventListener('input', function () {
+        syncRejectedFromHr(row);
+        recalcFromRelease(row);
+        applyHoldFinDeduction(row);
+      });
+  
+      // RejectedAmt is editable: remember a manual value, and if the field is
+      // cleared go back to the automatic value.
+      if (f.rejectedAmt) {
+        f.rejectedAmt.addEventListener('input', function () {
+          row.dataset.rejManual = f.rejectedAmt.value === '' ? '' : '1';
+        });
+        f.rejectedAmt.addEventListener('blur', function () {
+          if (f.rejectedAmt.value === '') {
+            row.dataset.rejManual = '';
+            syncRejectedFromHr(row);
+          }
+        });
+      }
+  
+      if (f.holdFinAmt) {
+        f.holdFinAmt.addEventListener('input', function () {
+          var typed = toNum(f.holdFinAmt.value);
+          var release = toNum(f.releaseHold.value);
+          row.dataset.originalHoldFin = (typed + release).toFixed(2);
+        });
+      }
+  
+      if (row.dataset.financeSaved === '1') {
+        applySavedLocks(row);
+      } else {
+        var auto = applyAutoApproveIfEligible(row);
+        if (!auto) {
+          if (f.statusDropdown.value) {
+            applyStatusLogic(row);
+          } else {
+            f.payableAmt.value = computePayable(row);
+          }
+        }
+      }
+  
+      applyHoldFinDeduction(row);
+      wireActionMirror(row);
+    }
+  
+    // ---------------- Split rows ----------------
+  
+    function baseRowFor(claimNo) {
+      return allRows().filter(function (r) {
+        return r.dataset.claimNo === claimNo && !isSplitRow(r);
+      })[0] || null;
+    }
+  
+    function lastRowFor(claimNo) {
+      var rows = allRows().filter(function (r) { return r.dataset.claimNo === claimNo; });
+      return rows.length ? rows[rows.length - 1] : null;
+    }
+  
+    // Turn a copy of the claim's main row into a clean, blank split row.
+    // The claim-level cells (claim no, HR amounts, project, ...) stay as copied.
+    function resetClonedRow(tr, claimNo) {
+      tr.classList.remove('row-active');
+      tr.classList.add('split-row');
+      tr.style.display = '';
+  
+      ['saving', 'dirty', 'splitId'].forEach(function (k) { delete tr.dataset[k]; });
+      splitCounter += 1;
+      tr.dataset.rowUid = claimNo + ':n' + splitCounter;
+      tr.dataset.financeSaved = '0';
+      tr.dataset.rejManual = '';
+      tr.dataset.originalHoldFin = '0';
+  
+      // Appr.Amt is 0 on a split row; Payable = 0 + Hold Release
+      tr.dataset.hrApproved = '0';
+      var apprCell = tr.querySelector('.hr-approved-cell');
+      if (apprCell) apprCell.textContent = '0';
+  
+      // Total Claim Amount is 0 on a split row and can be edited (saved with the split).
+      // Done before the aria-label loop below so the new box also gets "(split row)".
+      tr.dataset.totalClaim = '0';
+      var totalCell = tr.querySelector('.total-claim-cell');
+      if (totalCell) {
+        totalCell.innerHTML = '';
+        var totalInput = document.createElement('input');
+        totalInput.type = 'number';
+        totalInput.step = '0.01';
+        totalInput.min = '0';
+        totalInput.value = '0';
+        totalInput.className = 'amt-input split-total-claim';
+        totalInput.setAttribute('aria-label', 'Total claim amount for claim ' + claimNo);
+        totalCell.appendChild(totalInput);
+      }
+  
+      // validation leftovers from the copied row
+      Array.prototype.forEach.call(tr.querySelectorAll('.field-error'), function (el) { el.remove(); });
+      Array.prototype.forEach.call(tr.querySelectorAll('.required-missing'), function (el) { el.classList.remove('required-missing'); });
+      Array.prototype.forEach.call(tr.querySelectorAll('[aria-invalid]'), function (el) { el.removeAttribute('aria-invalid'); });
+      Array.prototype.forEach.call(tr.querySelectorAll('[data-err-id]'), function (el) { el.removeAttribute('data-err-id'); });
+      Array.prototype.forEach.call(tr.querySelectorAll('input[aria-describedby], select[aria-describedby]'), function (el) { el.removeAttribute('aria-describedby'); });
+  
+      // blank every editable field
+      function setVal(sel, v) { var el = tr.querySelector(sel); if (el) el.value = v; }
+      setVal('.finance-status-dropdown', '');
+      setVal('.nature-expense-dropdown', '');
+      setVal('.accounting-location-dropdown', '');
+      setVal('.worklocation-input', '');
+      setVal('.hold-fin-amt', '0');
+      setVal('.release-hold', '0');
+      setVal('.rej-amt', '');
+      setVal('.finance-comment', '');
+      setVal('.payable-amt', '0');
+      setVal('.paid-amt', '0');
+      setVal('.paid-date', '');
+      ['.release-hold', '.rej-amt'].forEach(function (sel) {
+        var el = tr.querySelector(sel);
+        if (el) { el.removeAttribute('readonly'); el.readOnly = false; }
+      });
+  
+      Array.prototype.forEach.call(tr.querySelectorAll('input[type="checkbox"]'), function (cb) { cb.checked = false; });
+  
+      var st = tr.querySelector('.autosave-status');
+      if (st) { st.textContent = ''; st.removeAttribute('title'); st.classList.remove('error', 'pending'); }
+  
+      // distinguish the controls for screen readers
+      Array.prototype.forEach.call(tr.querySelectorAll('input[aria-label], select[aria-label]'), function (el) {
+        el.setAttribute('aria-label', el.getAttribute('aria-label') + ' (split row)');
+      });
+  
+      // remove any old "Split" badge copied from an earlier version
+      Array.prototype.forEach.call(tr.querySelectorAll('.split-badge'), function (el) { el.remove(); });
+  
+      // Remove button (split rows only)
+      var cell = tr.querySelector('.action-cell');
+      if (cell && !cell.querySelector('.remove-split-btn')) {
+        var rb = document.createElement('button');
+        rb.type = 'button';
+        rb.className = 'remove-split-btn';
+        rb.textContent = 'Remove';
+        rb.setAttribute('aria-label', 'Remove this split row of claim ' + claimNo);
+        cell.appendChild(rb);
+      }
+    }
+  
+    // Fill a split row with the values of a split that already exists in the database.
+    function fillFromSeed(tr, d) {
+      var f = getRowFields(tr);
+      tr.dataset.splitId = d.splitId;
+      tr.dataset.rowUid = d.claimNo + ':s' + d.splitId;
+      tr.dataset.financeSaved = '1';
+      tr.dataset.rejManual = '1';
+      tr.dataset.originalHoldFin = d.originalHoldFin !== undefined && d.originalHoldFin !== '' ? d.originalHoldFin : '0';
+  
+      // Appr.Amt of the saved split (0 unless the database says otherwise)
+      var apprVal = toNum(d.approved);
+      tr.dataset.hrApproved = String(apprVal);
+      var apprCellSeed = tr.querySelector('.hr-approved-cell');
+      if (apprCellSeed) apprCellSeed.textContent = String(apprVal);
+  
+      f.statusDropdown.value = d.financeStatus || '';
+      tr.querySelector('.finance-comment').value = d.financeRemarks || '';
+      f.holdFinAmt.value = d.holdFin || '0';
+      f.releaseHold.value = d.release || '0';
+      f.rejectedAmt.value = d.rejected || '0';
+      f.payableAmt.value = d.payable || '0';
+      f.paidAmt.value = d.paid || '0';
+      tr.querySelector('.paid-date').value = d.paidDate || '';
+      if (f.totalClaim) f.totalClaim.value = d.totalClaim || '0';
+      if (f.natureDropdown) f.natureDropdown.value = d.nature || '';
+      if (f.locationDropdown) f.locationDropdown.value = d.location || '';
+      if (f.workingLocation) f.workingLocation.value = d.working || '';
+    }
+  
+    // Name split rows ClaimNo_1, ClaimNo_2 ... in the order they appear
+    // (saved splits come first, ordered by id, then unsaved ones).
+    function relabelSplits() {
+      var counts = {};
+      allRows().forEach(function (row) {
+        if (!isSplitRow(row)) return;
+        var claim = row.dataset.claimNo;
+        counts[claim] = (counts[claim] || 0) + 1;
+        var link = row.children[1] ? row.children[1].querySelector('a') : null;
+        if (link) link.textContent = claim + '_' + counts[claim];
+      });
+    }
+  
+    // Create a split row under the last row of the claim.
+    // seed = null -> a new blank split that exists only in the browser until it is saved.
+    function createSplitRow(claimNo, seed) {
+      var base = baseRowFor(claimNo);
+      if (!base) return null;
+  
+      var anchor = lastRowFor(claimNo) || base;
+      var tr = base.cloneNode(true);
+      resetClonedRow(tr, claimNo);
+      anchor.parentNode.insertBefore(tr, anchor.nextSibling);
+  
+      if (seed) fillFromSeed(tr, seed);
+      initRow(tr);
+      relabelSplits();
+      return tr;
+    }
+  
+    function addSplit(fromRow) {
+      var claimNo = fromRow.dataset.claimNo;
+      var tr = createSplitRow(claimNo, null);
+      if (!tr) return;
+      var f = getRowFields(tr);
+      setRowStatus(tr, 'Choose status', 'pending');
+      updateSelectionState();
+      if (tr.scrollIntoView) tr.scrollIntoView({ block: 'nearest' });
+      if (f.statusDropdown) f.statusDropdown.focus();
+      announce('New split row added for claim ' + claimNo + '. It is saved when you choose a finance status.');
+    }
+  
+    function dropRow(row) {
+      if (row === activeRow) setActiveRow(null);
+      row.remove();
+      relabelSplits();
+      updateSelectionState();
+    }
+  
+    function removeSplit(row) {
+      var claim = row.dataset.claimNo;
+  
+      if (row.dataset.saving === '1') {
+        announce('This split is being saved. Try again in a moment.');
+        return;
+      }
+  
+      var id = row.dataset.splitId;
+  
+      // Not saved yet: it only exists in the browser, just drop it.
+      if (!id) {
+        if (row._saveTimer) { clearTimeout(row._saveTimer); row._saveTimer = null; }
+        dropRow(row);
+        announce('Split row removed.');
+        return;
+      }
+  
+      if (!window.confirm('Remove this split row of claim ' + claim + '? This deletes it permanently.')) return;
+  
+      if (row._saveTimer) { clearTimeout(row._saveTimer); row._saveTimer = null; }
+      setRowStatus(row, 'Removing\u2026', 'pending');
+  
+      postJson(SPLIT_DELETE_URL_TEMPLATE.replace('__SPLIT__', encodeURIComponent(id)), {})
+        .then(function () {
+          clearDraft(row);
+          dropRow(row);
+          announce('Split row of claim ' + claim + ' removed.');
+        })
+        .catch(function (err) {
+          setRowStatus(row, 'Not removed', 'error');
+          announce('Could not remove the split. ' + err.message);
+        });
+    }
+  
+    table.addEventListener('click', function (e) {
+      var splitBtn = e.target.closest ? e.target.closest('.split-btn') : null;
+      if (splitBtn) {
+        e.preventDefault();
+        addSplit(splitBtn.closest('tr'));
+        return;
+      }
+      var removeBtn = e.target.closest ? e.target.closest('.remove-split-btn') : null;
+      if (removeBtn) {
+        e.preventDefault();
+        removeSplit(removeBtn.closest('tr'));
+      }
+    });
+  
+    // ---------------- Saving ----------------
+  
+    function getCsrfToken() {
+      var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+      return el ? el.value : '';
+    }
+  
+    // keepalive lets the request finish even if the page is refreshed or closed.
+    function postJson(url, payload) {
+      return fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (body) {
+            throw new Error(body.error || ('Server error ' + res.status));
+          });
+        }
+        return res.json().catch(function () { return null; }).then(function (body) {
+          if (!body || body.ok !== true) {
+            throw new Error('Unexpected server response. Refresh the page and log in again.');
+          }
+          return body;
+        });
+      });
+    }
+  
+    function saveFinanceClaim(claimNumber, payload) {
+      return postJson(SAVE_URL_TEMPLATE.replace('__CLAIM__', encodeURIComponent(claimNumber)), payload);
+    }
+  
+    function saveFinanceSplit(claimNumber, payload) {
+      return postJson(SPLIT_SAVE_URL_TEMPLATE.replace('__CLAIM__', encodeURIComponent(claimNumber)), payload);
+    }
+  
+    // ---------------- Drafts (kept in the browser until the server confirms the save) ----------------
+  
+    function draftKey(row) { return DRAFT_PREFIX + rowKey(row); }
+  
+    function writeDraft(row) {
+      // A split that has never been saved is not kept across a refresh.
+      if (isSplitRow(row) && !row.dataset.splitId) return;
+  
+      var f = getRowFields(row);
+      var draft = {
+        ts: Date.now(),
+        status: f.statusDropdown.value,
+        remarks: row.querySelector('.finance-comment').value,
+        holdFin: f.holdFinAmt ? f.holdFinAmt.value : '',
+        originalHoldFin: getOriginalHoldFin(row),
+        release: f.releaseHold.value,
+        rejected: f.rejectedAmt.value,
+        rejManual: row.dataset.rejManual === '1',
+        payable: f.payableAmt.value,
+        paid: f.paidAmt.value,
+        paidDate: row.querySelector('.paid-date').value,
+        totalClaim: f.totalClaim ? f.totalClaim.value : '',
+        nature: f.natureDropdown ? f.natureDropdown.value : '',
+        location: f.locationDropdown ? f.locationDropdown.value : '',
+        working: f.workingLocation ? f.workingLocation.value : ''
+      };
+      try { localStorage.setItem(draftKey(row), JSON.stringify(draft)); } catch (e) { /* storage full or blocked */ }
+    }
+  
+    function clearDraft(row) {
+      try { localStorage.removeItem(draftKey(row)); } catch (e) { /* ignore */ }
+    }
+  
+    function restoreDraft(row) {
+      var raw = null;
+      try { raw = localStorage.getItem(draftKey(row)); } catch (e) { return false; }
+      if (!raw) return false;
+  
+      var d;
+      try { d = JSON.parse(raw); } catch (e) { clearDraft(row); return false; }
+      if (!d || !d.ts || (Date.now() - d.ts) > DRAFT_MAX_AGE_MS) { clearDraft(row); return false; }
+  
+      var f = getRowFields(row);
+  
+      f.statusDropdown.value = d.status || '';
+      if (f.natureDropdown) f.natureDropdown.value = d.nature || '';
+      if (f.locationDropdown) f.locationDropdown.value = d.location || '';
+      if (f.workingLocation) f.workingLocation.value = d.working || '';
+  
+      var comment = row.querySelector('.finance-comment');
+      comment.value = d.remarks || '';
+      // refresh the "i" tooltip button (listener on the element only, no bubbling)
+      comment.dispatchEvent(new Event('input', { bubbles: false }));
+  
+      row.dataset.originalHoldFin = toNum(d.originalHoldFin).toFixed(2);
+      f.releaseHold.value = d.release;
+      row.dataset.rejManual = d.rejManual ? '1' : '';
+      if (d.rejManual) f.rejectedAmt.value = d.rejected;
+      if (f.holdFinAmt) f.holdFinAmt.value = d.holdFin;
+      f.paidAmt.value = d.paid;
+      row.querySelector('.paid-date').value = d.paidDate || '';
+      if (f.totalClaim && d.totalClaim !== undefined && d.totalClaim !== '') f.totalClaim.value = d.totalClaim;
+  
+      if (f.statusDropdown.value) {
+        applyStatusLogic(row);
+      } else {
+        syncRejectedFromHr(row);
+        f.payableAmt.value = computePayable(row);
+      }
+      return true;
+    }
+  
+    // ---------------- Autosave ----------------
+  
+    function setRowStatus(row, text, kind) {
+      var el = row.querySelector('.autosave-status');
+      if (!el) return;
+      el.textContent = text;
+      el.removeAttribute('title');
+      el.classList.toggle('error', kind === 'error');
+      el.classList.toggle('pending', kind === 'pending');
+    }
+  
+    function scheduleSave(row) {
+      if (row._saveTimer) clearTimeout(row._saveTimer);
+      row._saveTimer = null;
+  
+      // Keep a local copy right away, so nothing is lost on refresh.
+      writeDraft(row);
+  
+      if (!getRowFields(row).statusDropdown.value) {
+        setRowStatus(row, 'Choose status', 'pending');
+        return;
+      }
+      setRowStatus(row, 'Unsaved\u2026', 'pending');
+      row._saveTimer = setTimeout(function () {
+        row._saveTimer = null;
+        saveRow(row);
+      }, AUTOSAVE_DELAY);
+    }
+  
+    function saveRow(row) {
+      var claim = row.dataset.claimNo;
+      var f = getRowFields(row);
+      var status = f.statusDropdown.value;
+      var isSplit = isSplitRow(row);
+  
+      if (!status) return;
+  
+      if ((status === 'Hold' || status === 'Approved') && toNum(f.releaseHold.value) > getHrHold(row)) {
+        setRowStatus(row, 'Release > HR hold', 'error');
+        announce('Hold release amount for claim ' + claim + ' is more than the HR hold amount.');
+        return;
+      }
+  
+      // A save is already running: save again once it finishes.
+      // (For a new split this makes sure the second save already knows its split_id.)
+      if (row.dataset.saving === '1') { row.dataset.dirty = '1'; return; }
+  
+      var paidDateValue = row.querySelector('.paid-date').value;
+  
+      var payload = {
+        finance_status: status,
+        finance_remarks: row.querySelector('.finance-comment').value.trim(),
+        hold_amount_fin: toNum(f.holdFinAmt ? f.holdFinAmt.value : 0),
+        original_hold_amount_fin: getOriginalHoldFin(row),
+        hold_release_amount: toNum(f.releaseHold.value),
+        rejected_amount: toNum(f.rejectedAmt.value),
+        payable_amount: toNum(f.payableAmt.value),
+        paid_amount: toNum(f.paidAmt.value),
+        paid_date: paidDateValue,
+        paidon: paidDateValue,
+        nature_of_expense: f.natureDropdown ? f.natureDropdown.value : '',
+        accounting_location: f.locationDropdown ? f.locationDropdown.value : '',
+        working_location: f.workingLocation ? f.workingLocation.value.trim() : ''
+      };
+  
+      if (isSplit) {
+        // empty on the first save (the server creates the split), then the saved id
+        payload.split_id = row.dataset.splitId || null;
+        // Total Claim Amount of this split (editable box, 0 by default)
+        payload.total_claim_amount = toNum(f.totalClaim ? f.totalClaim.value : 0);
+        // Appr.Amt of this split (0 on a split row)
+        payload.approved_amount = getHrApproved(row);
+      }
+  
+      row.dataset.saving = '1';
+      row.dataset.dirty = '';
+      setRowStatus(row, 'Saving\u2026', 'pending');
+  
+      var request = isSplit ? saveFinanceSplit(claim, payload) : saveFinanceClaim(claim, payload);
+  
+      request
+        .then(function (body) {
+          if (isSplit && body && body.split_id) {
+            row.dataset.splitId = String(body.split_id);
+            row.dataset.rowUid = claim + ':s' + body.split_id;
+          }
+          row.dataset.financeSaved = '1';
+          applySavedLocks(row);
+          setRowStatus(row, 'Saved \u2713', '');
+          announce('Claim ' + claim + (isSplit ? ' (split)' : '') + ' saved.');
+          // Only drop the local draft when nothing newer is waiting.
+          if (!row._saveTimer && row.dataset.dirty !== '1') clearDraft(row);
+        })
+        .catch(function (err) {
+          setRowStatus(row, 'Not saved', 'error');
+          var stEl = row.querySelector('.autosave-status');
+          if (stEl) stEl.title = err.message;
+          announce('Could not save claim ' + claim + '. ' + err.message);
+        })
+        .then(function () {
+          row.dataset.saving = '';
+          if (row.dataset.dirty === '1') {
+            row.dataset.dirty = '';
+            saveRow(row);
+          }
+        });
+    }
+  
+    // Send every save that is still waiting (used when the page is refreshed or closed).
+    function flushPendingSaves() {
+      allRows().forEach(function (row) {
+        if (row._saveTimer) {
+          clearTimeout(row._saveTimer);
+          row._saveTimer = null;
+          saveRow(row);
+        }
+      });
+    }
+  
+    // Autosave when any editable field changes (on every keystroke, not only on blur)
+    var AUTOSAVE_SELECTOR = '.finance-status-dropdown, .hold-fin-amt, .release-hold, .rej-amt, ' +
+      '.payable-amt, .paid-amt, .paid-date, .finance-comment, .nature-expense-dropdown, ' +
+      '.accounting-location-dropdown, .worklocation-input, .split-total-claim';
+  
+    function onFieldEdited(e) {
+      if (!e.target.matches(AUTOSAVE_SELECTOR)) return;
+      scheduleSave(e.target.closest('tr'));
+    }
+    table.addEventListener('change', onFieldEdited);
+    table.addEventListener('input', onFieldEdited);
+  
+    // 1) set up the main rows
+    allRows().forEach(initRow);
+  
+    // 2) show the splits that are already saved in the database (nothing new is created here)
+    Array.prototype.forEach.call(document.querySelectorAll('#split-seeds .split-seed'), function (seed) {
+      createSplitRow(seed.dataset.claimNo, seed.dataset);
+    });
+  
+    // 3) bring back anything that was typed but not confirmed saved before the refresh.
+    allRows().forEach(function (row) {
+      if (restoreDraft(row)) {
+        scheduleSave(row);
+      }
+    });
+  
+    // ---------------- ExpDetails autosave (same API as the approved-claims page) ----------------
+
+    var EXPDETAILS_URL = "{% url 'update_expense_details' %}";
+    var EXPDETAILS_DELAY = 800;
+    var expSaved = {};    // last value known to be saved, per claim
+    var expValue = {};    // latest typed value, per claim
+    var expTimers = {};   // pending autosave timer, per claim
+    var expSaving = {};   // true while a request is running, per claim
+    var expDirty = {};    // typed again while a request was running
+
+    function expInputsFor(claim) {
+      return allRows()
+        .filter(function (r) { return r.dataset.claimNo === claim; })
+        .map(function (r) { return r.querySelector('.expdetails-input'); })
+        .filter(Boolean);
+    }
+
+    function expMark(claim, cls, title) {
+      expInputsFor(claim).forEach(function (inp) {
+        inp.classList.remove('exp-saving', 'exp-saved', 'exp-error');
+        if (cls) inp.classList.add(cls);
+        if (title !== undefined) inp.title = title;
+      });
+    }
+
+    // remember what is saved right now (main rows and any saved split rows)
+    allRows().forEach(function (r) {
+      var inp = r.querySelector('.expdetails-input');
+      var claim = r.dataset.claimNo;
+      if (inp && !(claim in expSaved)) expSaved[claim] = inp.value.trim();
+    });
+
+    function saveExpDetails(claim) {
+      var value = (expValue[claim] || '').trim();
+
+      if (value === expSaved[claim]) { expMark(claim, '', value); return; }
+      if (!value) {
+        expMark(claim, 'exp-error', 'Expense details cannot be empty.');
+        announce('Expense details for claim ' + claim + ' cannot be empty.');
+        return;
+      }
+      if (expSaving[claim]) { expDirty[claim] = true; return; }
+
+      expSaving[claim] = true;
+      expDirty[claim] = false;
+      expMark(claim, 'exp-saving', 'Saving\u2026');
+
+      fetch(EXPDETAILS_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        keepalive: true,              // still completes if the page is refreshed
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ claim_number: claim, expensedetails: value })
+      })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          if (!res.ok || body.status !== 'success') {
+            throw new Error(body.message || ('Server error ' + res.status));
+          }
+          return body;
+        });
+      })
+      .then(function (body) {
+        var saved = (body.expensedetails || value).trim();
+        expSaved[claim] = saved;
+        // keep the main row and its split rows in step (not the box being typed in)
+        expInputsFor(claim).forEach(function (inp) {
+          if (inp !== document.activeElement) inp.value = saved;
+        });
+        expMark(claim, 'exp-saved', saved);
+        announce('Expense details for claim ' + claim + ' saved.');
+        setTimeout(function () {
+          expInputsFor(claim).forEach(function (inp) { inp.classList.remove('exp-saved'); });
+        }, 1500);
+      })
+      .catch(function (err) {
+        expMark(claim, 'exp-error', 'Not saved: ' + err.message);
+        announce('Could not save expense details for claim ' + claim + '. ' + err.message);
+      })
+      .then(function () {
+        expSaving[claim] = false;
+        if (expDirty[claim]) { expDirty[claim] = false; saveExpDetails(claim); }
+      });
+    }
+
+    // save shortly after typing stops
+    table.addEventListener('input', function (e) {
+      if (!e.target.classList.contains('expdetails-input')) return;
+      var claim = e.target.closest('tr').dataset.claimNo;
+      expValue[claim] = e.target.value;
+      clearTimeout(expTimers[claim]);
+      expTimers[claim] = setTimeout(function () {
+        expTimers[claim] = null;
+        saveExpDetails(claim);
+      }, EXPDETAILS_DELAY);
+    });
+
+    // save immediately when leaving the box
+    table.addEventListener('change', function (e) {
+      if (!e.target.classList.contains('expdetails-input')) return;
+      var claim = e.target.closest('tr').dataset.claimNo;
+      expValue[claim] = e.target.value;
+      clearTimeout(expTimers[claim]);
+      expTimers[claim] = null;
+      saveExpDetails(claim);
+    });
+
+    // refresh / close / switch tab: send anything still waiting
+    function flushExpDetails() {
+      Object.keys(expTimers).forEach(function (claim) {
+        if (expTimers[claim]) {
+          clearTimeout(expTimers[claim]);
+          expTimers[claim] = null;
+          saveExpDetails(claim);
+        }
+      });
+    }
+    window.addEventListener('pagehide', flushExpDetails);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') flushExpDetails();
+    });
+
+    // ---------------- Selection / filters ----------------
+  
+    var selectAllCheckbox = document.getElementById('select-all-checkbox');
+    var bulkApproveBtn = document.getElementById('bulk-approve-btn');
+    var selectedCountLabel = document.getElementById('selected-count');
+    var financeStatusSelect = document.getElementById('select-by-finance-status');
+  
+    function updateSelectionState() {
+      var shown = visibleRows();
+      var shownChecked = shown.filter(isRowChecked).length;
+      var totalChecked = checkedRows().length;
+  
+      bulkApproveBtn.disabled = totalChecked === 0;
+      document.getElementById('transfer-paid-btn').disabled = totalChecked === 0;
+      selectedCountLabel.textContent = totalChecked > 0 ? (totalChecked + ' selected') : '';
+      selectAllCheckbox.checked = shown.length > 0 && shownChecked === shown.length;
+      selectAllCheckbox.indeterminate = shownChecked > 0 && shownChecked < shown.length;
+    }
+  
+    selectAllCheckbox.addEventListener('change', function () {
+      visibleRows().forEach(function (r) {
+        setRowChecked(r, selectAllCheckbox.checked);
+      });
+      updateSelectionState();
+    });
+  
+    table.addEventListener('change', function (e) {
+      if (
+        e.target.classList.contains('row-select-checkbox') ||
+        e.target.classList.contains('action-select-mirror')
+      ) {
+        updateSelectionState();
+      }
+    });
+  
+    var usernameInput = document.getElementById('username-input');
+    var claimInput = document.getElementById('claim-input');
+    var tatSelect = document.getElementById('tat-filter');
+    var dateFromInput = document.getElementById('approved-from');
+    var dateToInput = document.getElementById('approved-to');
+    var activeFinanceStatus = '';
+  
+    // claim number filter (also matches split rows, since they share the claim number)
+    function claimMatches(row) {
+      var q = claimInput.value.trim().toLowerCase();
+      if (!q) return true;
+      return (row.dataset.claimNo || '').toLowerCase().indexOf(q) !== -1;
+    }
+  
+    function parseIsoDate(s) {
+      if (!s) return null;
+      var p = s.split('-');
+      if (p.length !== 3) return null;
+      var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+      return isNaN(d.getTime()) ? null : d;
+    }
+  
+    function daysSince(d) {
+      var today = new Date();
+      today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      return Math.round((today - d) / 86400000);
+    }
+  
+    function dateMatches(row) {
+      var tat = tatSelect.value;
+      var from = parseIsoDate(dateFromInput.value);
+      var to = parseIsoDate(dateToInput.value);
+  
+      if (!tat && !from && !to) return true;
+  
+      var approved = parseIsoDate(row.dataset.approvedDate);
+      if (!approved) return false;   // no approved date -> cannot match an active date filter
+  
+      if (from && approved < from) return false;
+      if (to && approved > to) return false;
+  
+      if (tat) {
+        var age = daysSince(approved);
+        var parts = tat.split('-');
+        var min = parseInt(parts[0], 10);
+        var max = parts[1] === '' ? Infinity : parseInt(parts[1], 10);
+        if (age < min || age > max) return false;
+      }
+      return true;
+    }
+  
+    function applyFilters() {
+      var username = usernameInput.value.trim().toLowerCase();
+      var shown = 0;
+  
+      allRows().forEach(function (row) {
+        var rowUsername = (row.dataset.username || '').trim().toLowerCase();
+        var nameMatch = rowUsername.startsWith(username) || (username.length >= 3 && rowUsername.includes(username));
+  
+        var financeValue = getRowFields(row).statusDropdown.value;
+        var financeMatch;
+  
+        if (!activeFinanceStatus) {
+          // "All statuses"
+          financeMatch = true;
+        } else if (activeFinanceStatus === 'Hold') {
+          // "Hold" -> rows where HoldAmountHR is not 0
+          financeMatch = getHrHold(row) !== 0;
+        } else if (activeFinanceStatus === '__blank__') {
+          // "Pending" -> rows where FinanceStatus is Hold
+          financeMatch = financeValue === 'Hold';
+        } else {
+          // "Approved" / "Rejected" -> normal match on FinanceStatus
+          financeMatch = financeValue === activeFinanceStatus;
+        }
+  
+        var show = nameMatch && financeMatch && dateMatches(row) && claimMatches(row);
+  
+        row.style.display = show ? '' : 'none';
+        if (show) {
+          shown += 1;
+        } else {
+          setRowChecked(row, false);
+        }
+      });
+  
+      updateSelectionState();
+      return shown;
+    }
+  
+    // filter while typing a claim number
+    claimInput.addEventListener('input', function () {
+      var shown = applyFilters();
+      announce(shown + ' claim' + (shown === 1 ? '' : 's') + ' shown.');
+    });
+  
+    function onDateFilterChange() {
+      if (dateFromInput.value && dateToInput.value && dateFromInput.value > dateToInput.value) {
+        announce('From date is after To date. No claims will match.');
+      }
+      var shown = applyFilters();
+      announce(shown + ' claim' + (shown === 1 ? '' : 's') + ' shown.');
+    }
+    tatSelect.addEventListener('change', onDateFilterChange);
+    dateFromInput.addEventListener('change', onDateFilterChange);
+    dateToInput.addEventListener('change', onDateFilterChange);
+  
+    financeStatusSelect.addEventListener('change', function () {
+      activeFinanceStatus = financeStatusSelect.value;
+      var shown = applyFilters();
+      var label = financeStatusSelect.options[financeStatusSelect.selectedIndex].text;
+      announce(shown + ' claim' + (shown === 1 ? '' : 's') + ' shown' +
+               (activeFinanceStatus ? ' with finance status ' + label + '.' : ', all finance statuses.'));
+    });
+  
+    document.getElementById('clear-selection-btn').addEventListener('click', function () {
+      activeFinanceStatus = '';
+      financeStatusSelect.value = '';
+      tatSelect.value = '';
+      claimInput.value = '';
+      dateFromInput.value = '';
+      dateToInput.value = '';
+      allRows().forEach(function (r) { setRowChecked(r, false); });
+      applyFilters();
+      updateSelectionState();
+      announce('Filters and selection cleared.');
+    });
+  
+    // Bulk approve: set status, then autosave each changed row
+    bulkApproveBtn.addEventListener('click', function () {
+      var rows = checkedRows();
+      rows.forEach(function (row) {
+        getRowFields(row).statusDropdown.value = 'Approved';
+        applyStatusLogic(row);
+        setRowChecked(row, false);
+        scheduleSave(row);
+      });
+      updateSelectionState();
+      announce(rows.length + ' row' + (rows.length === 1 ? '' : 's') + ' set to Approved.');
+    });
+  
+    // Paid: copy payable amount to paid, then autosave each changed row
+    document.getElementById('transfer-paid-btn').addEventListener('click', function () {
+      var rows = checkedRows();
+      rows.forEach(function (row) {
+        var f = getRowFields(row);
+        f.paidAmt.value = toNum(f.payableAmt.value).toFixed(2);
+        scheduleSave(row);
+      });
+      announce('Payable amount copied to Paid for ' + rows.length + ' claim' + (rows.length === 1 ? '' : 's') + '.');
+    });
+  
+    // ---------------- Column toggle ----------------
+  
+    var LOCKED_COLUMNS = [0, 1];
+    var headerCells = table.querySelectorAll('thead th');
+    var toggleList = document.getElementById('col-toggle-list');
+    var columnDetails = document.getElementById('column-toggle');
+  
+    function loadHiddenColumns() { return []; }
+    function saveHiddenColumns() { /* intentionally empty */ }
+  
+    function updateTableWidth() {
+      var width = 0;
+      headerCells.forEach(function (th, idx) {
+        if (th.style.display === 'none') return;
+        if (idx === 0) width += 56;
+        else if (th.classList.contains('col-action')) width += 230;
+        else width += 140;
+      });
+      table.style.width = width + 'px';
+      table.style.minWidth = '100%';
+    }
+  
+    function setColumnVisible(idx, visible) {
+      table.querySelectorAll('tr').forEach(function (tr) {
+        var cell = tr.children[idx];
+        if (cell) cell.style.display = visible ? '' : 'none';
+      });
+      updateTableWidth();
+    }
+  
+    var hiddenAtStart = loadHiddenColumns();
+    updateTableWidth();
+  
+    headerCells.forEach(function (th, idx) {
+      if (LOCKED_COLUMNS.indexOf(idx) !== -1) return;
+  
+      var id = 'col-toggle-' + idx;
+      var wrap = document.createElement('div');
+      wrap.className = 'form-check';
+  
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'form-check-input';
+      cb.id = id;
+      cb.dataset.col = idx;
+      cb.checked = hiddenAtStart.indexOf(idx) === -1;
+  
+      var lb = document.createElement('label');
+      lb.className = 'form-check-label';
+      lb.htmlFor = id;
+      lb.textContent = th.textContent.trim();
+  
+      cb.addEventListener('change', function () {
+        setColumnVisible(idx, cb.checked);
+        saveHiddenColumns();
+        announce(lb.textContent + ' column ' + (cb.checked ? 'shown' : 'hidden') + '.');
+      });
+  
+      wrap.appendChild(cb);
+      wrap.appendChild(lb);
+      toggleList.appendChild(wrap);
+  
+      setColumnVisible(idx, cb.checked);
+    });
+  
+    document.getElementById('cols-show-all').addEventListener('click', function () {
+      toggleList.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        cb.checked = true;
+        setColumnVisible(parseInt(cb.dataset.col, 10), true);
+      });
+      saveHiddenColumns();
+      announce('All columns shown.');
+    });
+  
+    columnDetails.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && columnDetails.open) {
+        columnDetails.open = false;
+        columnDetails.querySelector('summary').focus();
+      }
+    });
+    document.addEventListener('click', function (e) {
+      if (columnDetails.open && !columnDetails.contains(e.target)) columnDetails.open = false;
+    });
+  
+    // ---------------- Excel export ----------------
+  
+    function cellValue(td) {
+      var link = td.querySelector('a');
+      if (link) return link.textContent.trim();
+      var select = td.querySelector('select');
+      if (select) return select.value;
+      var input = td.querySelector('input');
+      if (input) return input.type === 'number' ? toNum(input.value) : input.value;
+      return td.textContent.trim();
+    }
+  
+    document.getElementById('download-excel-btn').addEventListener('click', function () {
+      if (typeof XLSX === 'undefined') {
+        announce('Excel export is unavailable because the export library did not load.');
+        return;
+      }
+  
+      var headers = [];
+      headerCells.forEach(function (th, idx) {
+        if (idx === 0 || th.style.display === 'none' || th.classList.contains('col-action')) return;
+        headers.push(th.textContent.trim());
+      });
+  
+      var data = [headers];
+      visibleRows().forEach(function (row) {
+        var rowData = [];
+        Array.prototype.forEach.call(row.children, function (td, idx) {
+          if (idx === 0 || td.style.display === 'none' || td.classList.contains('col-action')) return;
+          rowData.push(cellValue(td));
+        });
+        data.push(rowData);
+      });
+  
+      var worksheet = XLSX.utils.aoa_to_sheet(data);
+      var workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'ExpenseClaims');
+      XLSX.writeFile(workbook, 'expense_claims.xlsx');
+      announce('Excel file downloaded with ' + (data.length - 1) + ' rows.');
+    });
+  
+    document.getElementById('search-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var shown = applyFilters();
+      announce(shown + ' claim' + (shown === 1 ? '' : 's') + ' shown.');
+    });
+  
+    // ---------------- Save / restore view state around a reload ----------------
+  
+    function saveViewState() {
+      var container = document.querySelector('.table-container');
+      var hiddenCols = [];
+      toggleList.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        if (!cb.checked) hiddenCols.push(parseInt(cb.dataset.col, 10));
+      });
+      var selected = allRows().filter(isRowChecked).map(rowKey);
+  
+      var st = {
+        username: usernameInput.value,
+        claim: claimInput.value,
+        financeStatus: activeFinanceStatus,
+        tat: tatSelect.value,
+        dateFrom: dateFromInput.value,
+        dateTo: dateToInput.value,
+        hiddenCols: hiddenCols,
+        selected: selected,
+        activeClaim: activeRow ? rowKey(activeRow) : '',
+        tableLeft: container ? container.scrollLeft : 0,
+        tableTop: container ? container.scrollTop : 0,
+        pageX: window.pageXOffset || 0,
+        pageY: window.pageYOffset || 0
+      };
+      try { sessionStorage.setItem(VIEW_STATE_KEY, JSON.stringify(st)); } catch (e) { /* ignore */ }
+    }
+  
+    function restoreViewState() {
+      var raw = null;
+      try {
+        raw = sessionStorage.getItem(VIEW_STATE_KEY);
+        sessionStorage.removeItem(VIEW_STATE_KEY);
+      } catch (e) { return; }
+      if (!raw) return;
+  
+      var st;
+      try { st = JSON.parse(raw); } catch (e) { return; }
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  
+      usernameInput.value = st.username || '';
+      claimInput.value = st.claim || '';
+      activeFinanceStatus = st.financeStatus || '';
+      financeStatusSelect.value = activeFinanceStatus;
+  
+      (st.hiddenCols || []).forEach(function (idx) {
+        var cb = document.getElementById('col-toggle-' + idx);
+        if (cb) {
+          cb.checked = false;
+          setColumnVisible(idx, false);
+        }
+      });
+  
+      tatSelect.value = st.tat || '';
+      dateFromInput.value = st.dateFrom || '';
+      dateToInput.value = st.dateTo || '';
+  
+      applyFilters();
+  
+      var selected = st.selected || [];
+      allRows().forEach(function (r) {
+        if (r.style.display !== 'none' && selected.indexOf(rowKey(r)) !== -1) {
+          setRowChecked(r, true);
+        }
+      });
+      updateSelectionState();
+  
+      // bring back the highlighted (clicked) row
+      if (st.activeClaim) {
+        var match = allRows().filter(function (r) { return rowKey(r) === st.activeClaim; })[0];
+        if (match) setActiveRow(match);
+      }
+  
+      var container = document.querySelector('.table-container');
+      requestAnimationFrame(function () {
+        container.scrollLeft = st.tableLeft || 0;
+        container.scrollTop = st.tableTop || 0;
+        window.scrollTo(st.pageX || 0, st.pageY || 0);
+      });
+  
+      if (st.message) announce(st.message);
+    }
+  
+    // Refresh / close / switch tab: push pending saves out and remember the view.
+    function onLeavingPage() {
+      flushPendingSaves();
+      saveViewState();
+    }
+    window.addEventListener('beforeunload', onLeavingPage);
+    window.addEventListener('pagehide', onLeavingPage);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') flushPendingSaves();
+    });
+  
+    restoreViewState();
+    updateSelectionState();
+  });
+  // Set paid date: apply one date to all selected rows, then autosave each changed row
+document.getElementById('bulk-paid-date-btn').addEventListener('click', function () {
+  var dateVal = document.getElementById('bulk-paid-date').value;
+  var rows = checkedRows();
+
+  if (!dateVal) {
+    announce('Choose a paid date first.');
+    return;
+  }
+  if (rows.length === 0) {
+    announce('Select at least one claim first.');
+    return;
+  }
+
+  rows.forEach(function (row) {
+    var pd = row.querySelector('.paid-date');
+    if (!pd) return;
+    pd.value = dateVal;
+    scheduleSave(row);
+  });
+  announce('Paid date ' + dateVal + ' set for ' + rows.length + ' claim' + (rows.length === 1 ? '' : 's') + '.');
+});
+  </script>
+{% endblock %}

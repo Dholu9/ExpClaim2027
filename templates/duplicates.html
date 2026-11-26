@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Expense Claim Portal{% endblock %}
+{% block content %}
+<br></br>
+<div class="col-10 offset-md-2">
+  <br></br>
+  <br></br>
+
+  <h5>Search by Username</h5>
+
+  <!-- Add a form to input the username -->
+  <form id="search-form">
+      <input type="text" id="username-input" placeholder="Enter username">
+      <button type="button" id="search-button">Search</button>
+  </form>
+  <br>
+
+<table class="table table-striped">
+    <thead style="background-color:rgb(207, 219, 224);">
+      <tr>
+       
+        <th scope="col">Claim Number</th>
+        <th scope="col">AssociateName</th> 
+        <th scope="col">Receipt Number</th>
+        <th scope="col">Claim Amount</th>           
+      </tr>
+    </thead>
+    
+    <tbody>
+    {% for group in grouped_claims %}       
+      <tr style="background-color:rgb(239, 244, 247);">
+        <td>
+         {{ group.parent__ClaimNumber }}
+        </td>        
+        <td>{{ group.parent__user__first_name }}</td>      
+        <td>{{ group.ReceiptNumber }}</td>
+        <td>{{ group.ClaimAmount }}</td>
+        
+
+    {% endfor %}
+    <script>
+    document.getElementById('search-button').addEventListener('click', function() {
+        var username = document.getElementById('username-input').value;
+        
+        // Loop through table rows and show/hide based on the username
+        var tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach(function(row) {
+            var usernameCell = row.querySelector('td:nth-child(2)'); // Assuming the username is in the third column
+            if (usernameCell.textContent === username) {
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+  </script>
+
+{% endblock %}
